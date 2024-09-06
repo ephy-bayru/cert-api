@@ -62,7 +62,7 @@ cert-api/
 ├── README.md                      # Project documentation
 ├── package.json                   # Dependencies and project metadata
 ├── tsconfig.json                  # TypeScript configuration
-├── index.ts                       # Main entry point
+├── main.ts                       # Main entry point
 ├── app.ts                         # App initialization
 ├── server.ts                      # Server initialization
 ├── src/
