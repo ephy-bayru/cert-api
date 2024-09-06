@@ -1,11 +1,6 @@
-import { LoggerService } from '../services/logger.service';
-
-const logger = new LoggerService(undefined, 'Serialization'); // Pass undefined for ConfigService
-
 /**
  * Serializes the provided data into a JSON string while handling circular references
- * and excluding specified keys. In case of serialization errors, it logs the error
- * and returns a standardized error message.
+ * and excluding specified keys. In case of serialization errors, it returns a standardized error message.
  *
  * @param data The data to serialize.
  * @param excludeKeys An array of keys to exclude from serialization.
@@ -27,7 +22,7 @@ export function serialize<T>(data: T, excludeKeys: string[] = []): string {
       return value;
     });
   } catch (error) {
-    logger.logError('Serialization error', { error });
+    console.error('Serialization error:', error);
     return '{"error": "Failed to serialize data. See server logs for more details."}';
   } finally {
     cache.clear();
@@ -36,8 +31,7 @@ export function serialize<T>(data: T, excludeKeys: string[] = []): string {
 
 /**
  * Deserializes the provided JSON string into an object of type T. If the string is not valid JSON,
- * it logs the error and returns null. This function also handles the restoration of complex types
- * such as Date objects identified by custom patterns or specific formatting.
+ * it logs the error and returns null.
  *
  * @param jsonStr The JSON string to deserialize.
  * @returns An object of type T or null if the string cannot be deserialized.
@@ -52,7 +46,7 @@ export function deserialize<T>(jsonStr: string): T | null {
       return value;
     }) as T;
   } catch (error) {
-    logger.logError('Deserialization error', { error });
+    console.error('Deserialization error:', error);
     return null;
   }
 }
