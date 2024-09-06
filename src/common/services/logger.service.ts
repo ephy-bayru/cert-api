@@ -1,6 +1,6 @@
 import { Injectable, ConsoleLogger, Scope } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { serialize } from '../utils/serialization-utils';
+import { ConfigService } from '@nestjs/config';
 
 enum LogLevel {
   Error = 'error',
@@ -24,7 +24,7 @@ export class LoggerService<T = any> extends ConsoleLogger {
 
   constructor(
     private configService?: ConfigService,
-    context?: string,
+    context: string = 'ApplicationLogger',
   ) {
     super(context);
     this.currentLogLevel = this.determineLogLevel();
