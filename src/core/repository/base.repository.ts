@@ -9,142 +9,184 @@ import {
   DeleteResult,
   FindOptionsWhere,
   FindOptionsOrder,
+  DeepPartial,
 } from 'typeorm';
 import {
   PaginationOptions,
   PaginationResult,
 } from 'src/common/interfaces/IPagination';
-import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { IBaseRepository } from 'src/common/interfaces/IBaseRepository';
+import { LoggerService } from 'src/common/services/logger.service';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { IBaseEntity } from 'src/common/interfaces/IBaseEntity';
 
-export class BaseRepository<T> implements IBaseRepository<T> {
+export class BaseRepository<T extends IBaseEntity & { id: string }>
+  implements IBaseRepository<T>
+{
   protected repository: Repository<T>;
+  protected logger: LoggerService;
 
   constructor(
-    private dataSource: DataSource,
-    private entity: EntityTarget<T>,
+    protected dataSource: DataSource,
+    protected entity: EntityTarget<T>,
+    logger: LoggerService,
   ) {
     this.repository = this.dataSource.getRepository(this.entity);
+    this.logger = logger;
   }
 
-  async findOne(idOrOptions: number | FindOneOptions<T>): Promise<T | null> {
-    if (typeof idOrOptions === 'number') {
-      const findOptions: FindOptionsWhere<T> = {} as FindOptionsWhere<T>;
-      findOptions['id'] = idOrOptions;
-      return this.repository.findOne({
-        where: findOptions,
-      });
+  async findOne(idOrOptions: string | FindOneOptions<T>): Promise<T | null> {
+    try {
+      if (typeof idOrOptions === 'string') {
+        const where: FindOptionsWhere<T> = {
+          id: idOrOptions,
+        } as FindOptionsWhere<T>;
+        return await this.repository.findOneBy(where);
+      }
+      return await this.repository.findOne(idOrOptions);
+    } catch (error) {
+      this.logger.logError('Error finding entity', { error, idOrOptions });
+      throw error;
     }
-    return this.repository.findOne(idOrOptions);
   }
 
-  /**
-   * Finds all entities based on the provided options, with pagination and sorting.
-   *
-   * @param paginationOptions - The options to filter, paginate, and limit the entities.
-   * @returns A promise that resolves to a pagination result containing the array of found entities.
-   */
   async findAll(
     paginationOptions: PaginationOptions<T>,
   ): Promise<PaginationResult<T>> {
-    const { page = 1, limit = 10, options = {}, sort } = paginationOptions;
+    const { page = 1, limit = 10, options = {}, sort = [] } = paginationOptions;
 
-    // Create the base find options
     const findOptions: FindManyOptions<T> = {
       ...options,
       skip: (page - 1) * limit,
       take: limit,
     };
 
-    // Add sorting if available, using string conversion for `keyof T`
-    if (sort) {
-      findOptions.order = sort.reduce((acc, curr) => {
-        acc[curr.field as string] = curr.order;
+    if (sort.length > 0) {
+      const order = sort.reduce<Record<string, 'ASC' | 'DESC'>>((acc, curr) => {
+        acc[curr.field] = curr.order;
         return acc;
-      }, {} as FindOptionsOrder<T>);
+      }, {});
+      findOptions.order = order as FindOptionsOrder<T>;
     }
 
-    const [data, total] = await this.repository.findAndCount(findOptions);
-
-    return {
-      data,
-      total,
-      page,
-      limit,
-    };
+    try {
+      const [data, total] = await this.repository.findAndCount(findOptions);
+      return {
+        data,
+        total,
+        page,
+        limit,
+      };
+    } catch (error) {
+      this.logger.logError('Error finding all entities', {
+        error,
+        paginationOptions,
+      });
+      throw error;
+    }
   }
 
-  async create(entity: Partial<T>, options?: SaveOptions): Promise<T> {
-    return this.repository.save(entity as any, options);
+  async create(entity: DeepPartial<T>, options?: SaveOptions): Promise<T> {
+    try {
+      const createdEntity = await this.repository.save(entity, options);
+      this.logger.logInfo('Entity created', { entity: createdEntity });
+      return createdEntity;
+    } catch (error) {
+      this.logger.logError('Error creating entity', { error, entity });
+      throw error;
+    }
   }
 
   async update(
-    criteria: number | FindOptionsWhere<T>,
-    partialEntity: Partial<T>,
+    criteria: string | FindOptionsWhere<T>,
+    partialEntity: QueryDeepPartialEntity<T>,
   ): Promise<UpdateResult> {
-    const transformedEntity: QueryDeepPartialEntity<T> =
-      partialEntity as QueryDeepPartialEntity<T>;
-
-    return this.repository.update(criteria, transformedEntity);
+    try {
+      const result = await this.repository.update(criteria, partialEntity);
+      this.logger.logInfo('Entity updated', { criteria, partialEntity });
+      return result;
+    } catch (error) {
+      this.logger.logError('Error updating entity', {
+        error,
+        criteria,
+        partialEntity,
+      });
+      throw error;
+    }
   }
 
-  async delete(criteria: number | FindOptionsWhere<T>): Promise<DeleteResult> {
-    return this.repository.delete(criteria);
+  async delete(criteria: string | FindOptionsWhere<T>): Promise<DeleteResult> {
+    try {
+      const result = await this.repository.delete(criteria);
+      this.logger.logInfo('Entity deleted', { criteria });
+      return result;
+    } catch (error) {
+      this.logger.logError('Error deleting entity', { error, criteria });
+      throw error;
+    }
   }
 
   async count(options: FindManyOptions<T> = {}): Promise<number> {
-    return this.repository.count(options);
+    try {
+      return await this.repository.count(options);
+    } catch (error) {
+      this.logger.logError('Error counting entities', { error, options });
+      throw error;
+    }
   }
 
-  async exists(criteria: FindOneOptions<T>): Promise<boolean> {
-    const count = await this.repository.count(criteria);
-    return count > 0;
+  async exists(criteria: FindOptionsWhere<T>): Promise<boolean> {
+    try {
+      const count = await this.repository.count({ where: criteria });
+      return count > 0;
+    } catch (error) {
+      this.logger.logError('Error checking if entity exists', {
+        error,
+        criteria,
+      });
+      throw error;
+    }
   }
 
-  /**
-   * Searches for entities based on the provided pagination and sorting options.
-   *
-   * @param paginationOptions - The options to paginate, sort, and filter the entities.
-   * @returns A promise that resolves to an object containing the data, total count, page number, and limit.
-   */
   async search(
     paginationOptions: PaginationOptions<T>,
   ): Promise<PaginationResult<T>> {
-    const { page = 1, limit = 10, sort, options = {} } = paginationOptions;
+    const { page = 1, limit = 10, sort = [], options = {} } = paginationOptions;
 
-    // Create the base query using TypeORM's QueryBuilder and apply filtering options
     const queryBuilder = this.repository.createQueryBuilder('entity');
 
-    // Apply filtering options (e.g., where conditions)
     if (options.where) {
       queryBuilder.where(options.where);
     }
 
-    // Apply relations if they exist and are in object form
-    if (options.relations && typeof options.relations === 'object') {
-      Object.keys(options.relations).forEach((relation) => {
+    if (options.relations && Array.isArray(options.relations)) {
+      options.relations.forEach((relation) => {
         queryBuilder.leftJoinAndSelect(`entity.${relation}`, relation);
       });
     }
 
-    // Handle sorting
-    if (sort) {
+    if (sort.length > 0) {
       sort.forEach(({ field, order }) => {
         queryBuilder.addOrderBy(`entity.${String(field)}`, order);
       });
     }
 
-    // Apply pagination
     queryBuilder.skip((page - 1) * limit).take(limit);
 
-    // Execute the query and get the results
-    const [data, total] = await queryBuilder.getManyAndCount();
-
-    return {
-      data,
-      total,
-      page,
-      limit,
-    };
+    try {
+      const [data, total] = await queryBuilder.getManyAndCount();
+      return {
+        data,
+        total,
+        page,
+        limit,
+      };
+    } catch (error) {
+      this.logger.logError('Error searching entities', {
+        error,
+        paginationOptions,
+      });
+      throw error;
+    }
   }
 }
