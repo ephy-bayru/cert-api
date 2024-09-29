@@ -8,10 +8,14 @@ import {
 import { Response, Request } from 'express';
 import { LoggerService } from '../services/logger.service';
 import { serialize } from '../utils/serialization-utils';
+import { ConfigService } from '@nestjs/config';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  constructor(private readonly logger: LoggerService) {}
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly configService: ConfigService,
+  ) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -33,6 +37,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         exception instanceof HttpException
           ? exception.name
           : 'InternalServerError',
+      ...this.includeStackTrace(exception),
     };
 
     this.logger.logError(
@@ -48,11 +53,30 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.status(status).json(errorResponse);
   }
 
-  // Helper method to extract exception message
+  /**
+   * Helper method to extract exception message
+   * @param exception
+   */
   private getExceptionMessage(exception: unknown): string {
     if (exception instanceof HttpException) {
-      return exception.message || JSON.stringify(exception.getResponse());
+      const exceptionResponse = exception.getResponse();
+      return typeof exceptionResponse === 'object'
+        ? JSON.stringify(exceptionResponse)
+        : exception.message;
     }
     return 'Internal Server Error';
+  }
+
+  /**
+   * Conditionally includes stack trace in the error response based on the environment.
+   */
+  private includeStackTrace(exception: unknown) {
+    const isProduction = this.configService.get('NODE_ENV') === 'production';
+
+    if (exception instanceof HttpException && !isProduction) {
+      return { stack: exception.stack };
+    }
+
+    return {};
   }
 }
