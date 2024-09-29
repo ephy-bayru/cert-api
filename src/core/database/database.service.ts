@@ -11,11 +11,17 @@ export class DatabaseService implements OnApplicationShutdown {
 
   async onApplicationShutdown(signal: string): Promise<void> {
     try {
-      this.logger.log('Shutting down database connections...', { signal });
-      await this.entityManager.connection.destroy();
-      this.logger.log('Database connections closed successfully.');
+      this.logger.logInfo(`Shutting down database connections...`, { signal });
+
+      // Check if the connection is still active before attempting to close it
+      if (this.entityManager.connection.isInitialized) {
+        await this.entityManager.connection.destroy();
+        this.logger.logInfo('Database connections closed successfully.');
+      } else {
+        this.logger.logWarn('Database connection was already closed.');
+      }
     } catch (error) {
-      this.logger.error('Error closing database connections:', error);
+      this.logger.logError('Error closing database connections:', { error });
     }
   }
 }
