@@ -23,7 +23,7 @@ export class LoggerService<T = any> extends ConsoleLogger {
   private currentLogLevel: LogLevel;
 
   constructor(
-    private configService?: ConfigService,
+    private configService: ConfigService,
     context: string = 'ApplicationLogger',
   ) {
     super(context);
@@ -31,22 +31,15 @@ export class LoggerService<T = any> extends ConsoleLogger {
     this.log(`Logger initialized at level: ${this.currentLogLevel}`);
   }
 
-  /**
-   * Determines the log level based on the configuration service or a default value.
-   * @returns The log level to be used for logging.
-   */
   private determineLogLevel(): LogLevel {
-    const level =
-      this.configService?.get<LogLevel>('LOG_LEVEL', LogLevel.Log) ??
-      LogLevel.Log;
-    return Object.values(LogLevel).includes(level) ? level : LogLevel.Log;
+    const level = this.configService
+      .get<string>('LOG_LEVEL', LogLevel.Log)
+      .toLowerCase();
+    return (
+      Object.values(LogLevel).includes(level as LogLevel) ? level : LogLevel.Log
+    ) as LogLevel;
   }
 
-  /**
-   * Determines if a message should be logged based on the current log level.
-   * @param level The log level of the current message.
-   * @returns Whether the message should be logged.
-   */
   private shouldLog(level: LogLevel): boolean {
     return (
       this.logLevelPriority[level] <=
@@ -54,13 +47,6 @@ export class LoggerService<T = any> extends ConsoleLogger {
     );
   }
 
-  /**
-   * Formats a log message with additional data and the current context.
-   * @param level The log level.
-   * @param message The log message.
-   * @param data Additional data to log.
-   * @returns The formatted log message string.
-   */
   private formatLogMessage(
     level: LogLevel,
     message: string,
@@ -71,13 +57,6 @@ export class LoggerService<T = any> extends ConsoleLogger {
     return `[${timestamp}] [${level.toUpperCase()}] [${this.context}] ${message}${serializedData}`;
   }
 
-  /**
-   * Logs a message based on the log level and provided data.
-   * @param level The log level.
-   * @param message The log message.
-   * @param data Additional data to log.
-   * @param trace Optional stack trace for error logging.
-   */
   private logMessage(
     level: LogLevel,
     message: string,
@@ -86,52 +65,42 @@ export class LoggerService<T = any> extends ConsoleLogger {
   ) {
     if (this.shouldLog(level)) {
       const formattedMessage = this.formatLogMessage(level, message, data);
-      super[level](formattedMessage, trace);
+      switch (level) {
+        case LogLevel.Error:
+          super.error(formattedMessage, trace);
+          break;
+        case LogLevel.Warn:
+          super.warn(formattedMessage);
+          break;
+        case LogLevel.Debug:
+          super.debug(formattedMessage);
+          break;
+        case LogLevel.Verbose:
+          super.verbose(formattedMessage);
+          break;
+        default:
+          super.log(formattedMessage);
+          break;
+      }
     }
   }
 
-  /**
-   * Logs an informational message.
-   * @param message The log message.
-   * @param data Additional data to log.
-   */
   public logInfo(message: string, data?: Partial<T>) {
     this.logMessage(LogLevel.Log, message, data);
   }
 
-  /**
-   * Logs a warning message.
-   * @param message The log message.
-   * @param data Additional data to log.
-   */
   public logWarn(message: string, data?: Partial<T>) {
     this.logMessage(LogLevel.Warn, message, data);
   }
 
-  /**
-   * Logs an error message.
-   * @param message The log message.
-   * @param data Additional data to log.
-   * @param trace Optional stack trace.
-   */
   public logError(message: string, data?: Partial<T>, trace?: string) {
     this.logMessage(LogLevel.Error, message, data, trace);
   }
 
-  /**
-   * Logs a debug message.
-   * @param message The log message.
-   * @param data Additional data to log.
-   */
   public logDebug(message: string, data?: Partial<T>) {
     this.logMessage(LogLevel.Debug, message, data);
   }
 
-  /**
-   * Logs a verbose message.
-   * @param message The log message.
-   * @param data Additional data to log.
-   */
   public logVerbose(message: string, data?: Partial<T>) {
     this.logMessage(LogLevel.Verbose, message, data);
   }
