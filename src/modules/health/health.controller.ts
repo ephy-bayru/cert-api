@@ -2,64 +2,100 @@ import { Controller, Get } from '@nestjs/common';
 import {
   HealthCheck,
   HealthCheckService,
-  HttpHealthIndicator,
   TypeOrmHealthIndicator,
-  DiskHealthIndicator,
+  HttpHealthIndicator,
   MemoryHealthIndicator,
+  HealthIndicatorResult,
 } from '@nestjs/terminus';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CustomHealthIndicator } from './indicators/custom.health';
-import { HealthCheckDocs } from './documentation/health.controller.documentation';
+import { LoggerService } from 'src/common/services/logger.service';
 import { ConfigService } from '@nestjs/config';
 
 @ApiTags('Health Check')
 @Controller({ path: 'health', version: '1' })
 export class HealthController {
+  private readonly memoryHeapThreshold: number;
+  private readonly memoryRSSThreshold: number;
+  private readonly dbHealthTimeout: number;
+  private readonly externalServiceUrl: string;
+
   constructor(
-    private health: HealthCheckService,
-    private db: TypeOrmHealthIndicator,
-    private http: HttpHealthIndicator,
-    private disk: DiskHealthIndicator,
-    private memory: MemoryHealthIndicator,
-    private customIndicator: CustomHealthIndicator,
-    private configService: ConfigService,
-  ) {}
+    private readonly health: HealthCheckService,
+    private readonly db: TypeOrmHealthIndicator,
+    private readonly http: HttpHealthIndicator,
+    private readonly memory: MemoryHealthIndicator,
+    private readonly customHealth: CustomHealthIndicator,
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext('HealthController');
+    // Extract configuration values
+    this.memoryHeapThreshold = this.configService.get<number>(
+      'MEMORY_HEAP_THRESHOLD',
+      150 * 1024 * 1024,
+    );
+    this.memoryRSSThreshold = this.configService.get<number>(
+      'MEMORY_RSS_THRESHOLD',
+      300 * 1024 * 1024,
+    );
+    this.dbHealthTimeout = this.configService.get<number>(
+      'DB_HEALTH_TIMEOUT',
+      3000,
+    );
+    this.externalServiceUrl = this.configService.get<string>(
+      'EXTERNAL_SERVICE_URL',
+      'https://ephrembayru.com/',
+    );
+  }
 
   @Get()
   @HealthCheck()
-  @HealthCheckDocs()
-  @ApiOperation({ summary: 'Check application health' })
-  check() {
-    return this.health.check([
-      // Check database health with custom timeout
-      () =>
-        this.db.pingCheck('database', {
-          timeout: this.configService.get<number>('DB_HEALTH_TIMEOUT', 3000),
-        }),
+  @ApiOperation({ summary: 'Performs a complete system health check' })
+  async checkHealth() {
+    try {
+      const result = await this.health.check([
+        () => this.checkDatabase(),
+        () => this.checkExternalService(),
+        () => this.memory.checkHeap('memory_heap', this.memoryHeapThreshold),
+        () => this.memory.checkRSS('memory_rss', this.memoryRSSThreshold),
+        () => this.customHealth.isHealthy('systemHealth'),
+      ]);
 
-      // Check external service health
-      () =>
-        this.http.pingCheck(
-          'externalService',
-          this.configService.get<string>(
-            'EXTERNAL_SERVICE_URL',
-            'https://ephrembayru.com/',
-          ),
-        ),
+      this.logger.logInfo('Health check successful', result);
+      return { status: result.status, info: result.info };
+    } catch (error) {
+      this.logger.logError('Health check failed', { error });
+      throw error;
+    }
+  }
 
-      // Custom service health
-      () => this.customIndicator.isHealthy('customService'),
+  private async checkDatabase(): Promise<HealthIndicatorResult> {
+    this.logger.logDebug('Checking database health', {
+      timeout: this.dbHealthTimeout,
+    });
 
-      // Disk space check (threshold set at 500MB free space)
-      () =>
-        this.disk.checkStorage('diskHealth', {
-          thresholdPercent: 0.9,
-          path: '/',
-        }),
+    const start = Date.now();
+    const dbResult = await this.db.pingCheck('database', {
+      timeout: this.dbHealthTimeout,
+    });
+    const responseTime = Date.now() - start;
 
-      // Memory usage check (alert if available memory < 150MB)
-      () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024), // 150 MB
-      () => this.memory.checkRSS('memory_rss', 300 * 1024 * 1024), // 300 MB
-    ]);
+    return {
+      database: {
+        status: dbResult.database.status,
+        responseTime: `${responseTime}ms`,
+        uptime: process.uptime(),
+        connectionStatus:
+          dbResult.database.status === 'up' ? 'connected' : 'disconnected',
+      },
+    };
+  }
+
+  private checkExternalService() {
+    this.logger.logDebug('Checking external service health', {
+      url: this.externalServiceUrl,
+    });
+    return this.http.pingCheck('externalService', this.externalServiceUrl);
   }
 }
