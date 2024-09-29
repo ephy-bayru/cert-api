@@ -17,7 +17,8 @@ export async function bootstrap() {
   const app = await NestFactory.create(AppModule, { httpsOptions });
 
   const configService = app.get(ConfigService);
-  const logger = new LoggerService(configService);
+
+  const logger = new LoggerService(configService, 'Bootstrap');
 
   app.useLogger(logger);
 
@@ -26,15 +27,18 @@ export async function bootstrap() {
   await configureApp(app, configService, logger);
 
   const port = configService.get<number>('PORT', 3000);
+
   await app.listen(port);
 
-  logger.log(`Application is running on: ${port}`);
+  logger.logInfo(`Application is running on: ${port}`);
 
+  // Handle application shutdown
   const shutdown = async (signal: string) => {
-    logger.log(`Application is shutting down (${signal})`);
+    logger.logInfo(`Application is shutting down (${signal})`);
     await app.close();
   };
 
+  // Listen for termination signals
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
