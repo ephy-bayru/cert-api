@@ -1,7 +1,8 @@
+import { IBaseEntity } from '../interfaces/IBaseEntity';
 import { PaginationOptions, PaginationResult } from '../interfaces/IPagination';
 import { Repository, FindManyOptions, FindOptionsOrder } from 'typeorm';
 
-export async function paginate<T>(
+export async function paginate<T extends IBaseEntity>(
   repository: Repository<T>,
   paginationOptions: PaginationOptions<T>,
 ): Promise<PaginationResult<T>> {
@@ -13,18 +14,18 @@ export async function paginate<T>(
     skip: (page - 1) * limit,
   };
 
-  if (sort) {
-    findOptions.order = sort.reduce((acc, curr) => {
-      const field = curr.field;
-      acc[field as string] = curr.order;
+  if (sort && sort.length > 0) {
+    const order = sort.reduce<Record<string, 'ASC' | 'DESC'>>((acc, curr) => {
+      acc[curr.field as string] = curr.order;
       return acc;
-    }, {} as FindOptionsOrder<T>);
+    }, {});
+    findOptions.order = order as FindOptionsOrder<T>;
   }
 
   try {
     const [data, total] = await repository.findAndCount(findOptions);
     return { data, total, page, limit };
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Pagination failed: ${error.message}`);
   }
 }
