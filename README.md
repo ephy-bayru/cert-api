@@ -55,104 +55,214 @@ This API is designed for applications where high security and multiple verificat
 
 ```bash
 cert-api/
-├── .env.development               # Environment variables for development
-├── .env.production                # Environment variables for production
-├── .env.test                      # Environment variables for testing
-├── .gitignore                     # Git ignore file
-├── README.md                      # Project documentation
-├── package.json                   # Dependencies and project metadata
-├── tsconfig.json                  # TypeScript configuration
-├── main.ts                       # Main entry point
-├── app.ts                         # App initialization
-├── server.ts                      # Server initialization
-├── src/
-│   ├── core/
-│   │   ├── common/
-│   │   │   ├── entities/          # Core data models
-│   │   │   │   └── BaseModel.ts   # Base model for data entities
-│   │   │   ├── interfaces/        # Interface definitions
-│   │   │   │   ├── IPaginationOptions.ts
-│   │   │   │   └── IPaginatedData.ts
-│   │   │   ├── constants/         # Constant values
-│   │   │   │   ├── rateLimit.ts
-│   │   │   │   └── permissions.ts
-│   │   │   ├── errors/            # Custom error handling
-│   │   │   │   ├── CustomError.ts
-│   │   │   │   └── CustomMongoError.ts
-│   │   │   ├── repositories/      # Generic repository structure
-│   │   │   │   ├── IGenericRepository.ts
-│   │   │   │   └── GenericRepository.ts
-│   │   │   ├── validations/       # Common validations
-│   │   │   │   └── commonValidation.ts
-│   │   │   ├── dto/               # Data transfer objects
-│   │   │   │   └── PaginationDTO.ts
-│   │   │   └── mappers/           # Data mappers for transformations
-│   │   │       └── GenericMapper.ts
-│   │   └── users/                 # User-specific models, services, and repositories
-│   │       ├── entities/
-│   │       │   └── User.ts
-│   │       ├── value_objects/
-│   │       │   ├── Email.ts
-│   │       │   └── Password.ts
-│   │       ├── repositories/
-│   │       │   ├── IUserRepository.ts
-│   │       │   └── UserRepository.ts
-│   │       ├── validations/
-│   │       │   └── userValidation.ts
-│   │       ├── dto/
-│   │       │   ├── UserDTO.ts
-│   │       │   └── UserRegistrationDTO.ts
-│   │       └── mappers/
-│   │           └── UserMapper.ts
-│   ├── application/
-│   │   ├── services/              # Application services
-│   │   │   └── UserService.ts
-│   │   └── validations/           # Validations specific to application logic
-│   │       ├── RegisterUserValidation.ts
-│   │       └── LoginUserValidation.ts
-│   └── infrastructure/
-│       ├── web/
-│       │   ├── controllers/       # API controllers for HTTP requests
-│       │   │   └── UserController.ts
-│       │   ├── routes/            # API route configurations
-│       │   │   └── user.routes.ts
-│       │   └── middlewares/       # Middleware for various purposes
-│       │       ├── error.middleware.ts
-│       │       ├── validationMiddleware.ts
-│       │       ├── rateLimit.middleware.ts
-│       │       ├── authenticate.middleware.ts
-│       │       ├── refreshToken.middleware.ts
-│       │       └── seedData.middleware.ts
-│       ├── persistence/
-│       │   ├── schemas/           # Database schema definitions
-│       │   │   └── userSchema.ts
-│       │   └── repositories/      # Database repository implementations
-│       │       └── BaseRepository.ts
-│       ├── external_services/     # External API services
-│       │   └── RandomUserAPI.ts
-│       ├── security/
-│       │   ├── CorsConfig.ts
-│       │   └── CSPConfig.ts
-│       └── common/
-│           ├── utils/             # Common utility functions
-│           │   ├── logger.util.ts
-│           │   ├── cache.util.ts
-│           │   ├── rateLimiter.util.ts
-│           │   └── passwordHash.ts
-│           └── helpers/           # Helper functions
-│               ├── httpResponse.helper.ts
-│               ├── checkIfTokenIsBlacklisted.ts
-│               └── pagination.helper.ts
-├── tests/                         # Test cases
-│   ├── unit/                      # Unit tests
-│   │   └── users/
-│   │       └── specificFile.test.ts
-│   └── integration/               # Integration tests
-│       └── auth/
-│           └── specificFile.test.ts
-└── docs/
-    └── swagger/
-        └── swagger.yaml           # Swagger API documentation
+|-- .env
+|-- .eslintrc.js
+|-- .gitignore
+|-- .prettierrc
+|-- .vscode/
+    |-- settings.json
+|-- README.md
+|-- list_project_structure.py
+|-- nest-cli.json
+|-- package.json
+|-- src/
+    |-- main.ts
+    |-- app.module.ts                 # Root module
+    |-- app.controller.ts             # Root controller
+    |-- app.service.ts                # Root service
+    |-- app.controller.spec.ts
+    |-- common/                       # Shared modules and utilities
+        |-- decorators/
+            |-- public.decorator.ts
+            |-- response-message.decorator.ts
+            |-- roles.decorator.ts
+        |-- filters/
+            |-- global-exception.filter.ts
+            |-- http-exception.filter.ts
+        |-- guards/
+            |-- jwt-auth.guard.ts
+            |-- roles.guard.ts
+        |-- interceptors/
+            |-- transform.interceptor.ts
+            |-- logging.interceptor.ts
+        |-- interfaces/
+            |-- IBaseEntity.ts
+            |-- IBaseRepository.ts
+            |-- ICustomeResponse.ts
+            |-- IPagination.ts
+        |-- services/
+            |-- cache.service.ts
+            |-- logger.service.ts
+        |-- utils/
+            |-- mask-utils.ts
+            |-- pagination-utils.ts
+            |-- serialization-utils.ts
+    |-- config/
+        |-- swagger.config.ts
+        |-- typeorm.config.ts
+    |-- core/                         # Core business logic and entities
+        |-- database/
+            |-- database.module.ts
+            |-- database.service.ts
+        |-- repository/
+            |-- base.repository.ts
+        |-- entities/
+            |-- address.entity.ts
+            |-- base.entity.ts        # Base entity class
+        |-- services/
+            |-- database-logger.service.ts
+    |-- modules/
+        |-- auth/                     # Authentication module
+            |-- auth.module.ts
+            |-- auth.service.ts
+            |-- auth.controller.ts
+            |-- dto/
+                |-- login.dto.ts
+                |-- register.dto.ts
+                |-- auth-response.dto.ts
+            |-- strategies/
+                |-- jwt.strategy.ts
+            |-- guards/
+                |-- jwt-auth.guard.ts
+            |-- interfaces/
+                |-- jwt-payload.interface.ts
+        |-- health/                   # Health check module
+            |-- health.module.ts
+            |-- health.controller.ts
+            |-- health.controller.spec.ts
+            |-- documentation/
+                |-- health.controller.documentation.ts
+            |-- indicators/
+                |-- custom.health.ts
+        |-- users/                    # Users module
+            |-- users.module.ts
+            |-- controllers/
+                |-- users.controller.ts
+                |-- users.controller.spec.ts
+            |-- services/
+                |-- users.service.ts
+                |-- seed.service.ts
+            |-- repository/
+                |-- users.repository.ts
+            |-- entities/
+                |-- user.entity.ts
+                |-- user-preference.entity.ts
+                |-- login-history.entity.ts
+                |-- user-role.enum.ts
+                |-- user-status.enum.ts
+            |-- dtos/
+                |-- create-user.dto.ts
+                |-- update-user.dto.ts
+                |-- user-response.dto.ts
+                |-- auth-response.dto.ts
+                |-- user.mapper.ts
+            |-- documentation/
+                |-- user.dto.documentation.ts
+                |-- users.controller.documentation.ts
+            |-- pipes/
+                |-- unique-user-validation.pipe.ts
+            |-- validations/
+                |-- user.validation.ts
+            |-- enums/
+                |-- provider-types.enum.ts
+            |-- interfaces/
+                |-- user.interface.ts
+        |-- organizations/            # Organizations module
+            |-- organizations.module.ts
+            |-- controllers/
+                |-- organizations.controller.ts
+            |-- services/
+                |-- organizations.service.ts
+            |-- repository/
+                |-- organizations.repository.ts
+            |-- entities/
+                |-- organization.entity.ts
+                |-- organization-status.enum.ts
+            |-- dtos/
+                |-- create-organization.dto.ts
+                |-- update-organization.dto.ts
+                |-- organization-response.dto.ts
+            |-- documentation/
+                |-- organization.dto.documentation.ts
+                |-- organizations.controller.documentation.ts
+            |-- validations/
+                |-- organization.validation.ts
+            |-- interfaces/
+                |-- organization.interface.ts
+        |-- documents/                # Documents module
+            |-- documents.module.ts
+            |-- controllers/
+                |-- documents.controller.ts
+            |-- services/
+                |-- documents.service.ts
+            |-- repository/
+                |-- documents.repository.ts
+            |-- entities/
+                |-- document.entity.ts
+                |-- document-status.enum.ts
+            |-- dtos/
+                |-- upload-document.dto.ts
+                |-- update-document.dto.ts
+                |-- document-response.dto.ts
+            |-- documentation/
+                |-- document.dto.documentation.ts
+                |-- documents.controller.documentation.ts
+            |-- validations/
+                |-- document.validation.ts
+            |-- interfaces/
+                |-- document.interface.ts
+        |-- notifications/            # Notifications module
+            |-- notifications.module.ts
+            |-- controllers/
+                |-- notifications.controller.ts
+            |-- services/
+                |-- notifications.service.ts
+            |-- repository/
+                |-- notifications.repository.ts
+            |-- entities/
+                |-- notification.entity.ts
+                |-- notification-type.enum.ts
+                |-- notification-status.enum.ts
+            |-- dtos/
+                |-- create-notification.dto.ts
+                |-- notification-response.dto.ts
+            |-- documentation/
+                |-- notification.dto.documentation.ts
+                |-- notifications.controller.documentation.ts
+            |-- validations/
+                |-- notification.validation.ts
+            |-- interfaces/
+                |-- notification.interface.ts
+        |-- verifications/            # Verifications module
+            |-- verifications.module.ts
+            |-- controllers/
+                |-- verifications.controller.ts
+            |-- services/
+                |-- verifications.service.ts
+            |-- repository/
+                |-- verifications.repository.ts
+            |-- entities/
+                |-- verification.entity.ts
+                |-- verification-status.enum.ts
+            |-- dtos/
+                |-- create-verification.dto.ts
+                |-- update-verification.dto.ts
+                |-- verification-response.dto.ts
+            |-- documentation/
+                |-- verification.dto.documentation.ts
+                |-- verifications.controller.documentation.ts
+            |-- validations/
+                |-- verification.validation.ts
+            |-- interfaces/
+                |-- verification.interface.ts
+    |-- server.ts
+|-- test/
+    |-- app.e2e-spec.ts
+    |-- jest-e2e.json
+|-- tsconfig.build.json
+|-- tsconfig.json
+|-- yarn.lock
+
 ```
 
 ## Installation
