@@ -12,12 +12,6 @@ export class CacheService {
     private logger: LoggerService,
   ) {}
 
-  /**
-   * Stores a value in the cache with an optional TTL.
-   * @param key - Cache key.
-   * @param value - Value to be cached.
-   * @param ttl - Time to live in seconds (optional, default is 300 seconds).
-   */
   async set(
     key: string,
     value: any,
@@ -38,11 +32,6 @@ export class CacheService {
     }
   }
 
-  /**
-   * Retrieves a cached value by key.
-   * @param key - Cache key.
-   * @returns The cached value or null if not found.
-   */
   async get<T>(key: string): Promise<T | null> {
     try {
       const value = await this.cacheManager.get<string>(key);
@@ -62,10 +51,6 @@ export class CacheService {
     }
   }
 
-  /**
-   * Deletes a cached value by key.
-   * @param key - Cache key.
-   */
   async del(key: string): Promise<void> {
     try {
       await this.cacheManager.del(key);
@@ -79,13 +64,6 @@ export class CacheService {
     }
   }
 
-  /**
-   * Retrieves a cached value or executes the fetch function and stores the result in the cache.
-   * @param key - Cache key.
-   * @param fetchFunction - A function to fetch the value if it is not found in the cache.
-   * @param ttl - Time to live in seconds (optional, default is 300 seconds).
-   * @returns The cached or freshly fetched value.
-   */
   async getOrSet<T>(
     key: string,
     fetchFunction: () => Promise<T>,
@@ -106,7 +84,6 @@ export class CacheService {
         `Error in getOrSet for key "${key}": ${error.message}`,
         { key, ttl, error },
       );
-      // Fetch the value directly if cache operation fails
       if (!value) {
         value = await fetchFunction();
         this.logger.logWarn(
@@ -115,5 +92,43 @@ export class CacheService {
       }
     }
     return value;
+  }
+
+  async deletePattern(pattern: string): Promise<void> {
+    try {
+      const keys = await this.cacheManager.store.keys(pattern);
+      await Promise.all(keys.map((key) => this.cacheManager.del(key)));
+      this.logger.logInfo(`Cache deleted for pattern "${pattern}"`);
+    } catch (error) {
+      this.logger.logError(
+        `Error deleting cache for pattern "${pattern}": ${error.message}`,
+        { pattern, error },
+      );
+      throw error;
+    }
+  }
+
+  async clear(): Promise<void> {
+    try {
+      await this.cacheManager.reset();
+      this.logger.logInfo('Cache cleared');
+    } catch (error) {
+      this.logger.logError(`Error clearing cache: ${error.message}`, { error });
+      throw error;
+    }
+  }
+
+  async getTtl(key: string): Promise<number | undefined> {
+    try {
+      const ttl = await this.cacheManager.store.ttl(key);
+      this.logger.logInfo(`TTL for key "${key}": ${ttl}`);
+      return ttl;
+    } catch (error) {
+      this.logger.logError(
+        `Error getting TTL for key "${key}": ${error.message}`,
+        { key, error },
+      );
+      throw error;
+    }
   }
 }
