@@ -5,51 +5,88 @@ import {
   IsString,
   Matches,
   IsEnum,
-  ValidateIf,
+  IsDate,
+  Length,
+  IsIn,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ProviderType } from '../enums/provider-types';
 import { UserStatus } from '../entities/user-status.entity';
+import { AddressDto } from './address.dto';
+import { UserRole } from '../entities/user-role.entity';
 
 export class CreateUserDto {
-  @IsString({ message: 'First name must be a string.' })
-  @IsNotEmpty({ message: 'First name is required.' })
+  @IsString()
+  @IsNotEmpty()
   firstName: string;
 
-  @IsString({ message: 'Last name must be a string.' })
-  @IsNotEmpty({ message: 'Last name is required.' })
+  @IsString()
+  @IsNotEmpty()
   lastName: string;
 
-  @IsString({ message: 'User name must be a string.' })
-  @IsNotEmpty({ message: 'User name is required.' })
+  @IsOptional()
+  @IsString()
+  surname?: string;
+
+  @IsString()
+  @IsNotEmpty()
   userName: string;
 
-  @IsNotEmpty({ message: 'Email address is required.' })
-  @IsEmail({}, { message: 'Email address must be valid.' })
+  @IsEmail()
+  @IsNotEmpty()
   email: string;
 
-  @ValidateIf((o) => o.provider === ProviderType.Local)
-  @IsNotEmpty({ message: 'Password is required for local accounts.' })
+  @IsOptional()
+  @IsString()
   @Matches(
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
     {
       message:
-        'Password must include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).',
+        'Password must include at least one uppercase letter, one lowercase letter, one number, and one special character.',
     },
   )
   password?: string;
 
   @IsOptional()
-  @IsEnum(ProviderType, {
-    message:
-      'Provider must be a valid type (e.g., local, google, facebook, twitter, microsoft).',
-  })
-  provider: ProviderType = ProviderType.Local;
+  @IsEnum(ProviderType)
+  provider?: ProviderType;
+
+  @IsEnum(UserRole)
+  @IsOptional()
+  role?: UserRole;
 
   @IsOptional()
   @IsEnum(UserStatus)
   status?: UserStatus;
 
   @IsOptional()
-  @IsString({ message: 'Phone number must be a string.' })
-  phoneNumber?: string;
+  @IsDate()
+  @Type(() => Date)
+  dateOfBirth?: Date;
+
+  @IsOptional()
+  @IsString()
+  nationality?: string;
+
+  @IsOptional()
+  @IsIn(['male', 'female', 'other'])
+  sex?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(16, 16, { message: 'FCN must be exactly 16 digits' })
+  @Matches(/^\d{16}$/, { message: 'FCN must contain only numbers' })
+  fcn?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(12, 12, { message: 'FIN must be exactly 12 digits' })
+  @Matches(/^\d{12}$/, { message: 'FIN must contain only numbers' })
+  fin?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AddressDto)
+  address?: AddressDto;
 }

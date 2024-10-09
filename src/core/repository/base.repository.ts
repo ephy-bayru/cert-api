@@ -13,18 +13,18 @@ import {
   SelectQueryBuilder,
   UpdateResult,
 } from 'typeorm';
-import {
-  PaginationOptions,
-  PaginationResult,
-} from 'src/common/interfaces/IPagination';
-import { IBaseRepository } from 'src/common/interfaces/IBaseRepository';
-import { LoggerService } from 'src/common/services/logger.service';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
-import { IBaseEntity } from 'src/common/interfaces/IBaseEntity';
 import {
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { IBaseEntity } from 'src/common/interfaces/IBaseEntity';
+import { IBaseRepository } from 'src/common/interfaces/IBaseRepository';
+import { LoggerService } from 'src/common/services/logger.service';
+import {
+  PaginationOptions,
+  PaginationResult,
+} from 'src/common/interfaces/IPagination';
 
 export class BaseRepository<T extends IBaseEntity>
   implements IBaseRepository<T>
@@ -32,36 +32,47 @@ export class BaseRepository<T extends IBaseEntity>
   protected repository: Repository<T>;
 
   constructor(
-    protected dataSource: DataSource,
-    protected entity: EntityTarget<T>,
-    protected logger: LoggerService,
+    protected readonly dataSource: DataSource,
+    protected readonly entity: EntityTarget<T>,
+    protected readonly logger: LoggerService,
   ) {
     this.repository = this.dataSource.getRepository(this.entity);
   }
 
-  async findOne(idOrOptions: string | FindOneOptions<T>): Promise<T | null> {
+  async findOne(idOrOptions: string | FindOneOptions<T>): Promise<T> {
     try {
+      let result: T | null;
       if (typeof idOrOptions === 'string') {
-        const result = await this.repository.findOne({
+        result = await this.repository.findOne({
           where: { id: idOrOptions } as FindOptionsWhere<T>,
         });
-        if (!result) {
-          throw new NotFoundException(
-            `Entity with id ${idOrOptions} not found`,
-          );
-        }
-        return result;
+      } else {
+        result = await this.repository.findOne(idOrOptions);
       }
-      const result = await this.repository.findOne(idOrOptions);
-      if (!result && idOrOptions.where && 'id' in idOrOptions.where) {
-        throw new NotFoundException(
-          `Entity with id ${idOrOptions.where['id']} not found`,
-        );
+
+      if (!result) {
+        const id = this.extractIdFromOptions(idOrOptions);
+        throw new NotFoundException(`Entity with id ${id} not found`);
       }
+
       return result;
     } catch (error) {
       this.handleError('Error finding entity', error, { idOrOptions });
     }
+  }
+
+  private extractIdFromOptions(
+    idOrOptions: string | FindOneOptions<T>,
+  ): string {
+    if (typeof idOrOptions === 'string') {
+      return idOrOptions;
+    }
+
+    if (idOrOptions.where && 'id' in idOrOptions.where) {
+      return idOrOptions.where['id'] as string;
+    }
+
+    return 'unknown';
   }
 
   async findAll(
@@ -77,12 +88,7 @@ export class BaseRepository<T extends IBaseEntity>
         order: this.parseSortOption(sort),
       });
 
-      return {
-        data,
-        total,
-        page,
-        limit,
-      };
+      return { data, total, page, limit };
     } catch (error) {
       this.handleError('Error finding all entities', error, {
         paginationOptions,
@@ -106,7 +112,7 @@ export class BaseRepository<T extends IBaseEntity>
     try {
       const result = await this.repository.update(criteria, partialEntity);
       if (result.affected === 0) {
-        throw new NotFoundException(`Entity not found`);
+        throw new NotFoundException('Entity not found');
       }
       return result;
     } catch (error) {
@@ -121,7 +127,7 @@ export class BaseRepository<T extends IBaseEntity>
     try {
       const result = await this.repository.delete(criteria);
       if (result.affected === 0) {
-        throw new NotFoundException(`Entity not found`);
+        throw new NotFoundException('Entity not found');
       }
       return result;
     } catch (error) {
@@ -161,12 +167,7 @@ export class BaseRepository<T extends IBaseEntity>
         .take(limit)
         .getManyAndCount();
 
-      return {
-        data,
-        total,
-        page,
-        limit,
-      };
+      return { data, total, page, limit };
     } catch (error) {
       this.handleError('Error searching entities', error, {
         paginationOptions,
@@ -193,8 +194,12 @@ export class BaseRepository<T extends IBaseEntity>
     }
   }
 
-  protected handleError(message: string, error: any, context?: any): never {
-    this.logger.logError(message, { error, context });
+  protected handleError(
+    message: string,
+    error: unknown,
+    context?: unknown,
+  ): never {
+    this.logger.error(message, 'BaseRepository', { error, context });
     if (error instanceof NotFoundException) {
       throw error;
     }
@@ -202,7 +207,7 @@ export class BaseRepository<T extends IBaseEntity>
   }
 
   private parseSortOption(
-    sort: { field: string; order: 'ASC' | 'DESC' }[],
+    sort: Array<{ field: string; order: 'ASC' | 'DESC' }>,
   ): FindOptionsOrder<T> {
     return sort.reduce((acc, { field, order }) => {
       acc[field] = order;
@@ -231,10 +236,10 @@ export class BaseRepository<T extends IBaseEntity>
 
   private applySorting(
     queryBuilder: SelectQueryBuilder<T>,
-    sort: { field: string; order: 'ASC' | 'DESC' }[],
+    sort: Array<{ field: string; order: 'ASC' | 'DESC' }>,
   ): void {
     sort.forEach(({ field, order }) => {
-      queryBuilder.addOrderBy(`entity.${String(field)}`, order);
+      queryBuilder.addOrderBy(`entity.${field}`, order);
     });
   }
 }

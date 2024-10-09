@@ -8,22 +8,24 @@ import { GetAuditLogsDto } from '../dtos/get-audit-logs.dto';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
 import { ClassConstructor, plainToClass } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
-import { LoggerService } from 'src/common/services/logger.service';
-import { CacheService } from 'src/common/services/cache.service';
-import { PaginationResult } from 'src/common/interfaces/IPagination';
 import { CreateAuditLogDto } from '../dtos/create-audit-logs.dto';
+import { CacheService } from 'src/common/services/cache.service';
 import { ExportService } from 'src/common/services/export.service';
+import { LoggerService } from 'src/common/services/logger.service';
+import { PaginationResult } from 'src/common/interfaces/IPagination';
+import { AuditAction } from '../enums/audit-action.enum';
 
 @Injectable()
 export class AuditLogService {
+  private readonly CACHE_TTL = 300; // 5 minutes
+  private readonly STATS_CACHE_TTL = 3600; // 1 hour
+
   constructor(
     private readonly auditLogRepository: AuditLogRepository,
     private readonly logger: LoggerService,
     private readonly cacheService: CacheService,
     private readonly exportService: ExportService,
-  ) {
-    this.logger.setContext('AuditLogService');
-  }
+  ) {}
 
   async createLog(logData: CreateAuditLogDto): Promise<AuditLog> {
     try {
@@ -32,42 +34,27 @@ export class AuditLogService {
         logData,
       );
       const savedLog = await this.auditLogRepository.create(validatedLogData);
-      this.logger.logInfo('Audit log created', {
+      this.logger.log('Audit log created', 'AuditLogService', {
         id: savedLog.id,
         action: savedLog.action,
       });
       await this.invalidateCache();
       return savedLog;
     } catch (error) {
-      this.logger.logError('Error creating audit log', { error, logData });
-      throw new BadRequestException('Failed to create audit log');
+      this.handleError('Error creating audit log', error, logData);
     }
   }
 
   async findAll(filters: GetAuditLogsDto): Promise<PaginationResult<AuditLog>> {
     try {
       const cacheKey = this.generateCacheKey(filters);
-      const cachedResult =
-        await this.cacheService.get<PaginationResult<AuditLog>>(cacheKey);
-
-      if (cachedResult) {
-        this.logger.logInfo('Returning cached audit logs');
-        return cachedResult;
-      }
-
-      const { page, limit, ...searchOptions } = filters;
-      const result = await this.auditLogRepository.findAll({
-        page,
-        limit,
-        options: this.buildFindOptions(searchOptions),
-      });
-
-      await this.cacheService.set(cacheKey, result, 300); // Cache for 5 minutes
-
-      return result;
+      return await this.cacheService.getOrSet(
+        cacheKey,
+        () => this.fetchAuditLogs(filters),
+        this.CACHE_TTL,
+      );
     } catch (error) {
-      this.logger.logError('Error fetching audit logs', { error, filters });
-      throw new BadRequestException('Failed to fetch audit logs');
+      this.handleError('Error fetching audit logs', error, filters);
     }
   }
 
@@ -79,8 +66,7 @@ export class AuditLogService {
       }
       return auditLog;
     } catch (error) {
-      this.logger.logError('Error fetching audit log by ID', { error, id });
-      throw error;
+      this.handleError('Error fetching audit log by ID', error, { id });
     }
   }
 
@@ -90,30 +76,23 @@ export class AuditLogService {
       if (result.affected === 0) {
         throw new NotFoundException(`Audit log with ID ${id} not found`);
       }
-      this.logger.logInfo('Audit log deleted', { id });
+      this.logger.log('Audit log deleted', 'AuditLogService', { id });
       await this.invalidateCache();
     } catch (error) {
-      this.logger.logError('Error deleting audit log', { error, id });
-      throw error;
+      this.handleError('Error deleting audit log', error, { id });
     }
   }
 
   async getStatistics(): Promise<any> {
     try {
       const cacheKey = 'audit_log_statistics';
-      const cachedStats = await this.cacheService.get<any>(cacheKey);
-
-      if (cachedStats) {
-        return cachedStats;
-      }
-
-      const stats = await this.calculateStatistics();
-      await this.cacheService.set(cacheKey, stats, 3600); // Cache for 1 hour
-
-      return stats;
+      return await this.cacheService.getOrSet(
+        cacheKey,
+        () => this.calculateStatistics(),
+        this.STATS_CACHE_TTL,
+      );
     } catch (error) {
-      this.logger.logError('Error fetching audit log statistics', { error });
-      throw new BadRequestException('Failed to fetch audit log statistics');
+      this.handleError('Error fetching audit log statistics', error);
     }
   }
 
@@ -122,69 +101,74 @@ export class AuditLogService {
   ): Promise<{ buffer: Buffer; contentType: string }> {
     try {
       const { data } = await this.findAll(filters);
-
-      if (filters.exportFormat === 'csv') {
-        const buffer = await this.exportService.exportToCsv(data, 'audit_logs');
-        return { buffer, contentType: 'text/csv' };
-      } else if (filters.exportFormat === 'json') {
-        const buffer = await this.exportService.exportToJson(data);
-        return { buffer, contentType: 'application/json' };
-      } else if (filters.exportFormat === 'excel') {
-        const buffer = await this.exportService.exportToExcel(
-          data,
-          'audit_logs',
-        );
-        return {
-          buffer,
-          contentType:
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        };
-      }
-
-      throw new BadRequestException('Unsupported export format');
+      return await this.exportData(data, filters.exportFormat);
     } catch (error) {
-      this.logger.logError('Error exporting audit logs', { error, filters });
-      throw new BadRequestException('Failed to export audit logs');
+      this.handleError('Error exporting audit logs', error, filters);
+    }
+  }
+
+  private async fetchAuditLogs(
+    filters: GetAuditLogsDto,
+  ): Promise<PaginationResult<AuditLog>> {
+    const { page, limit, ...searchOptions } = filters;
+    return await this.auditLogRepository.findAll({
+      page,
+      limit,
+      options: this.buildFindOptions(searchOptions),
+    });
+  }
+
+  async createDocumentLog(
+    documentId: string,
+    action: AuditAction,
+    performedBy: string,
+    metadata: any,
+  ): Promise<AuditLog> {
+    const logData: CreateAuditLogDto = {
+      action,
+      entityType: 'Document',
+      entityId: documentId,
+      performedById: performedBy,
+      metadata,
+    };
+    return this.createLog(logData);
+  }
+
+  async getDocumentHistory(documentId: string): Promise<AuditLog[]> {
+    try {
+      const cacheKey = `document_history_${documentId}`;
+      return await this.cacheService.getOrSet(
+        cacheKey,
+        () => this.auditLogRepository.findDocumentHistory(documentId),
+        this.CACHE_TTL,
+      );
+    } catch (error) {
+      this.handleError('Error fetching document history', error, {
+        documentId,
+      });
     }
   }
 
   private buildFindOptions(filters: Partial<GetAuditLogsDto>): any {
     const options: any = { where: {} };
 
-    if (filters.actions?.length) {
+    if (filters.actions?.length)
       options.where.action = { $in: filters.actions };
-    }
-
-    if (filters.entityTypes?.length) {
+    if (filters.entityTypes?.length)
       options.where.entityType = { $in: filters.entityTypes };
-    }
-
-    if (filters.performedById) {
+    if (filters.performedById)
       options.where.performedById = filters.performedById;
-    }
-
-    if (filters.startDate) {
+    if (filters.startDate)
       options.where.performedAt = { $gte: filters.startDate };
-    }
-
-    if (filters.endDate) {
+    if (filters.endDate)
       options.where.performedAt = {
         ...options.where.performedAt,
         $lte: filters.endDate,
       };
-    }
-
-    if (filters.statuses?.length) {
+    if (filters.statuses?.length)
       options.where.status = { $in: filters.statuses };
-    }
-
-    if (filters.ipAddress) {
-      options.where.ipAddress = filters.ipAddress;
-    }
-
-    if (filters.entityId) {
-      options.where.entityId = filters.entityId;
-    }
+    if (filters.ipAddress) options.where.ipAddress = filters.ipAddress;
+    if (filters.entityId) options.where.entityId = filters.entityId;
 
     if (filters.searchTerm) {
       options.where.$or = [
@@ -202,8 +186,7 @@ export class AuditLogService {
   }
 
   private async invalidateCache(): Promise<void> {
-    const cachePattern = 'audit_logs_*';
-    await this.cacheService.del(cachePattern);
+    await this.cacheService.del('audit_logs_*');
   }
 
   private async validateDto<T extends object>(
@@ -229,11 +212,52 @@ export class AuditLogService {
       .map((error) => Object.values(error.constraints || {}).join(', '))
       .join('; ');
   }
+
   private async calculateStatistics(): Promise<any> {
-    const totalLogs = await this.auditLogRepository.count();
-    const actionCounts = await this.auditLogRepository.getActionCounts();
-    const recentActivity = await this.auditLogRepository.getRecentActivity();
+    const [totalLogs, actionCounts, recentActivity] = await Promise.all([
+      this.auditLogRepository.count(),
+      this.auditLogRepository.getActionCounts(),
+      this.auditLogRepository.getRecentActivity(),
+    ]);
 
     return { totalLogs, actionCounts, recentActivity };
+  }
+
+  private async exportData(
+    data: AuditLog[],
+    format: string,
+  ): Promise<{ buffer: Buffer; contentType: string }> {
+    switch (format) {
+      case 'csv':
+        return {
+          buffer: await this.exportService.exportToCsv(data, 'audit_logs'),
+          contentType: 'text/csv',
+        };
+      case 'json':
+        return {
+          buffer: await this.exportService.exportToJson(data),
+          contentType: 'application/json',
+        };
+      case 'excel':
+        return {
+          buffer: await this.exportService.exportToExcel(data, 'audit_logs'),
+          contentType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        };
+      default:
+        throw new BadRequestException('Unsupported export format');
+    }
+  }
+
+  private handleError(
+    message: string,
+    error: unknown,
+    context?: unknown,
+  ): never {
+    this.logger.error(message, 'AuditLogService', { error, context });
+    throw error instanceof BadRequestException ||
+      error instanceof NotFoundException
+      ? error
+      : new BadRequestException(message);
   }
 }

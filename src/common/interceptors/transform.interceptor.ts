@@ -13,33 +13,47 @@ import { CustomResponse } from '../interfaces/ICustomeResponse';
 
 @Injectable()
 export class TransformInterceptor<T>
-  implements NestInterceptor<T, CustomResponse<T>>
+  implements NestInterceptor<T, CustomResponse<T | null>>
 {
   constructor(private readonly reflector: Reflector) {}
 
   intercept(
     context: ExecutionContext,
     next: CallHandler<T>,
-  ): Observable<CustomResponse<T>> {
+  ): Observable<CustomResponse<T | null>> {
+    return next
+      .handle()
+      .pipe(map((data) => this.transformResponse(context, data)));
+  }
+
+  private transformResponse(
+    context: ExecutionContext,
+    data: T,
+  ): CustomResponse<T | null> {
     const ctx = context.switchToHttp();
-    const response: Response = ctx.getResponse<Response>();
+    const response = ctx.getResponse<Response>();
+    const statusCode = response.statusCode;
 
     const customMessage =
-      this.reflector.get<string>(RESPONSE_MESSAGE_KEY, context.getHandler()) ||
-      'Request successful';
+      this.reflector.get<string>(RESPONSE_MESSAGE_KEY, context.getHandler()) ??
+      this.getDefaultMessage(statusCode);
 
-    return next.handle().pipe(
-      map((data) => {
-        const statusCode = response.statusCode;
-        const responseData = (data ?? {}) as T;
+    return {
+      statusCode,
+      message: customMessage,
+      data: data ?? null,
+      timestamp: new Date().toISOString(),
+    };
+  }
 
-        return {
-          statusCode: statusCode,
-          message: customMessage,
-          data: responseData,
-          timestamp: new Date().toISOString(),
-        } as CustomResponse<T>;
-      }),
-    );
+  private getDefaultMessage(statusCode: number): string {
+    if (statusCode >= 200 && statusCode < 300) {
+      return 'Request successful';
+    } else if (statusCode >= 400 && statusCode < 500) {
+      return 'Client error';
+    } else if (statusCode >= 500) {
+      return 'Server error';
+    }
+    return 'Request processed';
   }
 }

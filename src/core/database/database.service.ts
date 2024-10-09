@@ -1,27 +1,46 @@
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
-import { EntityManager } from 'typeorm';
 import { LoggerService } from 'src/common/services/logger.service';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class DatabaseService implements OnApplicationShutdown {
+  private readonly context = 'DatabaseService';
+  private isClosed = false;
+
   constructor(
-    private entityManager: EntityManager,
-    private logger: LoggerService,
+    private readonly dataSource: DataSource,
+    private readonly logger: LoggerService,
   ) {}
 
-  async onApplicationShutdown(signal: string): Promise<void> {
-    try {
-      this.logger.logInfo(`Shutting down database connections...`, { signal });
+  async onApplicationShutdown(signal?: string): Promise<void> {
+    if (this.isClosed) {
+      this.logger.warn('Database connection is already closed.', this.context);
+      return;
+    }
 
-      // Check if the connection is still active before attempting to close it
-      if (this.entityManager.connection.isInitialized) {
-        await this.entityManager.connection.destroy();
-        this.logger.logInfo('Database connections closed successfully.');
+    this.logger.log('Shutting down database connections...', this.context, {
+      signal,
+    });
+
+    try {
+      if (this.dataSource.isInitialized) {
+        await this.dataSource.destroy();
+        this.logger.log(
+          'Database connections closed successfully.',
+          this.context,
+        );
       } else {
-        this.logger.logWarn('Database connection was already closed.');
+        this.logger.warn(
+          'Database connection was already closed.',
+          this.context,
+        );
       }
     } catch (error) {
-      this.logger.logError('Error closing database connections:', { error });
+      this.logger.error('Error closing database connections:', this.context, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      this.isClosed = true;
     }
   }
 }

@@ -7,10 +7,15 @@ import {
   Index,
   JoinColumn,
 } from 'typeorm';
-import { User } from 'src/modules/users/entities/user.entity';
+import { User } from '@modules/users/entities/user.entity';
+import { Organization } from '@modules/organizations/entities/organization.entity';
+import { Document } from '@modules/documents/entities/document.entity';
 import { AuditAction } from '../enums/audit-action.enum';
 
 @Entity('audit_logs')
+@Index(['entityType', 'entityId'])
+@Index(['performedAt', 'action'])
+@Index(['documentId', 'performedAt'])
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -31,7 +36,7 @@ export class AuditLog {
   entityId?: string;
 
   @Index()
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, (user) => user.auditLogs, { nullable: true })
   @JoinColumn({ name: 'performedById' })
   performedBy?: User;
 
@@ -43,7 +48,13 @@ export class AuditLog {
   performedAt: Date;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata?: any;
+  metadata?: {
+    oldValue?: any;
+    newValue?: any;
+    reason?: string;
+    additionalInfo?: any;
+    changedFields?: string[];
+  };
 
   @Column({ nullable: true })
   ipAddress?: string;
@@ -52,8 +63,56 @@ export class AuditLog {
   userAgent?: string;
 
   @Column({ nullable: true })
-  status: string;
+  status?: string;
 
   @Column({ type: 'text', nullable: true })
-  details: string;
+  details?: string;
+
+  @ManyToOne(() => Document, (document) => document.auditLogs, {
+    nullable: true,
+  })
+  @JoinColumn({ name: 'documentId' })
+  document?: Document;
+
+  @Index()
+  @Column({ nullable: true })
+  documentId?: string;
+
+  @ManyToOne(() => Organization, (organization) => organization.auditLogs, {
+    nullable: true,
+  })
+  @JoinColumn({ name: 'organizationId' })
+  organization?: Organization;
+
+  @Column({ nullable: true })
+  organizationId?: string;
+
+  @Column({ nullable: true })
+  blockchainTransactionHash?: string;
+
+  @Column({ nullable: true })
+  blockchainBlockNumber?: number;
+
+  @Column({ nullable: true, type: 'timestamp' })
+  blockchainTimestamp?: Date;
+
+  @Column({ nullable: true })
+  documentVersion?: number;
+
+  @Index()
+  @Column({ type: 'integer', nullable: true })
+  sequenceNumber?: number;
+
+  @Column({ type: 'jsonb', nullable: true })
+  verificationDetails?: {
+    verifiedByOrganizationIds?: string[];
+    verificationStatus?: string;
+    verificationComments?: string;
+  };
+
+  @Column({ nullable: true })
+  previousStatus?: string;
+
+  @Column({ nullable: true })
+  newStatus?: string;
 }

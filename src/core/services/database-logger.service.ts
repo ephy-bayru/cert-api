@@ -5,7 +5,7 @@ import { LoggerOptions, LogLevel } from 'typeorm';
 
 @Injectable()
 export class DatabaseLoggerService {
-  private readonly validOptions: LogLevel[] = [
+  private readonly validOptions: readonly LogLevel[] = [
     'query',
     'error',
     'schema',
@@ -13,41 +13,43 @@ export class DatabaseLoggerService {
     'info',
     'log',
     'migration',
-  ];
+  ] as const;
 
   constructor(
-    private configService: ConfigService,
-    private logger: LoggerService,
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
   ) {}
 
   public determineDatabaseLoggingOptions(): LoggerOptions {
-    let loggingConfig =
-      this.configService.get<string>('DB_LOGGING', 'false') ?? 'false';
+    const loggingConfig = this.configService.get<string>('DB_LOGGING', 'false');
 
     if (typeof loggingConfig !== 'string') {
-      this.logger.logWarn('DB_LOGGING must be a string. Logging is disabled.');
+      this.logger.warn(
+        'DB_LOGGING must be a string. Logging is disabled.',
+        'DatabaseLoggerService',
+      );
       return false;
     }
 
-    loggingConfig = loggingConfig.toLowerCase();
+    const normalizedConfig = loggingConfig.toLowerCase();
 
-    if (loggingConfig === 'false') {
+    if (normalizedConfig === 'false') {
       return false;
     }
 
-    if (['true', 'all'].includes(loggingConfig)) {
+    if (['true', 'all'].includes(normalizedConfig)) {
       return 'all';
     }
 
-    const options = loggingConfig.split(',').map((opt) => opt.trim());
-
+    const options = normalizedConfig.split(',').map((opt) => opt.trim());
     const filteredOptions = options.filter((opt): opt is LogLevel =>
       this.validOptions.includes(opt as LogLevel),
     );
 
     if (filteredOptions.length === 0) {
-      this.logger.logWarn(
+      this.logger.warn(
         `Invalid DB_LOGGING options provided: ${loggingConfig}. Logging is disabled.`,
+        'DatabaseLoggerService',
       );
       return false;
     }

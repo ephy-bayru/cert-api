@@ -2,130 +2,81 @@ import * as bcrypt from 'bcrypt';
 import {
   Injectable,
   NotFoundException,
-  InternalServerErrorException,
   ConflictException,
   ForbiddenException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { UsersRepository } from '../repository/users-repository';
-import { LoggerService } from 'src/common/services/logger.service';
 import { UpdateUserDto } from '../dtos/update-user.dto';
-import { PaginationResult } from 'src/common/interfaces/IPagination';
 import { UserResponseDto } from '../dtos/user-response.dto';
 import { CreateUserDto } from '../dtos/create-user.dto';
 import { UserMapper } from '../dtos/user.mapper';
 import { ConfigService } from '@nestjs/config';
 import { ProviderType } from '../enums/provider-types';
-import { User, UserStatus } from '../entities/user.entity';
+import { User } from '../entities/user.entity';
 import { UserRole } from '../entities/user-role.entity';
+import { LoggerService } from 'src/common/services/logger.service';
+import {
+  PaginationOptions,
+  PaginationResult,
+} from 'src/common/interfaces/IPagination';
+import { UserStatus } from '../entities/user-status.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
-    private usersRepository: UsersRepository,
-    private logger: LoggerService,
-    private configService: ConfigService,
-    private userMapper: UserMapper,
-  ) {
-    this.logger.setContext('UsersService');
-  }
+    private readonly usersRepository: UsersRepository,
+    private readonly logger: LoggerService,
+    private readonly configService: ConfigService,
+    private readonly userMapper: UserMapper,
+  ) {}
 
   async findByEmail(email: string): Promise<UserResponseDto> {
-    try {
-      const user = await this.usersRepository.findByEmail(email);
-      if (!user) {
-        this.logger.logWarn(`No user found with email ${email}`);
-        throw new NotFoundException(`No user found with email ${email}`);
-      }
-      this.logger.logInfo('User found by email', { email });
-      return this.userMapper.toResponseDto(user);
-    } catch (error) {
-      this.logger.logError('Failed to find user by email', { email, error });
-      throw new InternalServerErrorException('Failed to find user by email');
+    const user = await this.usersRepository.findByEmail(email);
+    if (!user) {
+      this.logger.warn('No user found with email', 'UsersService', {
+        email,
+      });
+      throw new NotFoundException(`No user found with email ${email}`);
     }
+    this.logger.log('User found by email', 'UsersService', { email });
+    return this.userMapper.toResponseDto(user);
   }
 
   async findOneById(id: string): Promise<UserResponseDto> {
-    try {
-      const user = await this.usersRepository.getUserById(id);
-      this.logger.logInfo('User found by ID', { userId: id });
-      return this.userMapper.toResponseDto(user);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        this.logger.logWarn(`User not found with ID: ${id}`);
-        throw error;
-      }
-      this.logger.logError(`Failed to find user by ID: ${id}`, { error });
-      throw new InternalServerErrorException('Failed to find user by ID');
-    }
+    const user = await this.usersRepository.getUserById(id);
+    this.logger.log('User found by ID', 'UsersService', { userId: id });
+    return this.userMapper.toResponseDto(user);
   }
 
   async findAllPaginated(
-    page = 1,
-    limit = 10,
+    paginationOptions: PaginationOptions<User>,
   ): Promise<PaginationResult<UserResponseDto>> {
-    try {
-      const result = await this.usersRepository.getUsers(page, limit);
-
-      const data = result.data.map((user) =>
-        this.userMapper.toResponseDto(user),
-      );
-
-      this.logger.logInfo('Retrieved paginated users', {
-        page,
-        limit,
-        total: result.total,
-      });
-
-      return {
-        data,
-        total: result.total,
-        page: result.page,
-        limit: result.limit,
-      };
-    } catch (error) {
-      this.logger.logError('Failed to retrieve paginated users', { error });
-      throw new InternalServerErrorException('Failed to retrieve users.');
-    }
+    const result = await this.usersRepository.getUsers(paginationOptions);
+    const data = result.data.map((user) => this.userMapper.toResponseDto(user));
+    this.logger.log('Retrieved paginated users', 'UsersService', {
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+    });
+    return {
+      ...result,
+      data,
+    };
   }
 
   async createUser(createUserDto: CreateUserDto): Promise<UserResponseDto> {
     try {
-      const emailExists = await this.usersRepository.emailExists(
-        createUserDto.email,
-      );
-      if (emailExists) {
-        this.logger.logWarn(`Email already in use: ${createUserDto.email}`);
-        throw new ConflictException(
-          `Email already in use: ${createUserDto.email}`,
-        );
-      }
+      await this.checkUniqueFields(createUserDto);
 
-      const userNameExists = await this.usersRepository.userNameExists(
-        createUserDto.userName,
-      );
-      if (userNameExists) {
-        this.logger.logWarn(
-          `Username already in use: ${createUserDto.userName}`,
-        );
-        throw new ConflictException(
-          `Username already in use: ${createUserDto.userName}`,
-        );
-      }
-
-      // Handle password based on provider
       if (createUserDto.provider === ProviderType.Local) {
-        if (createUserDto.password) {
-          createUserDto.password = await bcrypt.hash(
-            createUserDto.password,
-            10,
-          );
-        } else {
+        if (!createUserDto.password) {
           throw new ConflictException(
             'Password is required for local accounts.',
           );
         }
+        createUserDto.password = await bcrypt.hash(createUserDto.password, 10);
       } else {
-        // For OAuth providers, set a default password or handle accordingly
         createUserDto.password = await bcrypt.hash(
           this.configService.get(
             'OAUTH_PLACEHOLDER_PASSWORD',
@@ -135,17 +86,22 @@ export class UsersService {
         );
       }
 
-      // Explicitly set status to DEACTIVATED
-      createUserDto.status = UserStatus.DEACTIVATED;
+      createUserDto.status =
+        createUserDto.status || UserStatus.PENDING_ACTIVATION;
 
       const newUser = await this.usersRepository.createUser(createUserDto);
-      this.logger.logInfo('User created successfully', { userId: newUser.id });
+      this.logger.log('User created successfully', 'UsersService', {
+        userId: newUser.id,
+      });
       return this.userMapper.toResponseDto(newUser);
     } catch (error) {
       if (error instanceof ConflictException) {
         throw error;
       }
-      this.logger.logError('Failed to create user', { error, createUserDto });
+      this.logger.error('Failed to create user', 'UsersService', {
+        error,
+        createUserDto,
+      });
       throw new InternalServerErrorException('Error creating user');
     }
   }
@@ -159,52 +115,52 @@ export class UsersService {
       const existingUser = await this.usersRepository.getUserById(id);
 
       if (updateUserDto.email && updateUserDto.email !== existingUser.email) {
-        const emailExists = await this.usersRepository.emailExists(
-          updateUserDto.email,
-        );
-        if (emailExists) {
-          this.logger.logWarn(`Email already in use: ${updateUserDto.email}`);
-          throw new ConflictException('Email already in use');
-        }
+        await this.checkEmailUniqueness(updateUserDto.email);
       }
 
       if (
         updateUserDto.userName &&
         updateUserDto.userName !== existingUser.userName
       ) {
-        const userNameExists = await this.usersRepository.userNameExists(
-          updateUserDto.userName,
-        );
-        if (userNameExists) {
-          this.logger.logWarn(
-            `Username already in use: ${updateUserDto.userName}`,
-          );
-          throw new ConflictException('Username already in use');
-        }
+        await this.checkUserNameUniqueness(updateUserDto.userName);
       }
 
-      // Prevent changing the provider
+      if (updateUserDto.fcn && updateUserDto.fcn !== existingUser.fcn) {
+        await this.checkFcnUniqueness(updateUserDto.fcn);
+      }
+
+      if (updateUserDto.fin && updateUserDto.fin !== existingUser.fin) {
+        await this.checkFinUniqueness(updateUserDto.fin);
+      }
+
       if (updateUserDto.hasOwnProperty('provider')) {
-        this.logger.logWarn('Attempt to change provider is not allowed');
         throw new ConflictException('Cannot change authentication provider');
       }
 
-      // Prevent non-admins from changing the status
       if (updateUserDto.status && currentUser.role !== UserRole.ADMIN) {
-        this.logger.logWarn('Attempt to change status by non-admin user');
         throw new ForbiddenException('Only admins can change user status');
       }
 
-      // Hash the password if it's being updated
       if (updateUserDto.password) {
         updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
       }
 
-      const updatedUser = await this.usersRepository.updateUser(
-        id,
-        updateUserDto,
-      );
-      this.logger.logInfo('User updated successfully', { userId: id });
+      const updateData: Partial<User> = {
+        ...updateUserDto,
+        address: updateUserDto.address
+          ? {
+              ...updateUserDto.address,
+              id: existingUser.id,
+              user: existingUser.address?.user,
+              organization: existingUser.address?.organization,
+            }
+          : undefined,
+      };
+
+      const updatedUser = await this.usersRepository.updateUser(id, updateData);
+      this.logger.log('User updated successfully', 'UsersService', {
+        userId: id,
+      });
       return this.userMapper.toResponseDto(updatedUser);
     } catch (error) {
       if (
@@ -214,113 +170,170 @@ export class UsersService {
       ) {
         throw error;
       }
-      this.logger.logError(`Error updating user with ID: ${id}`, { error });
+      this.logger.error('Error updating user', 'UsersService', {
+        userId: id,
+        error,
+      });
       throw new InternalServerErrorException('Error updating user');
     }
   }
 
   async deleteUser(id: string): Promise<void> {
-    try {
-      await this.usersRepository.deleteUser(id);
-      this.logger.logInfo('User deleted successfully', { userId: id });
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      this.logger.logError(`Error deleting user with ID: ${id}`, { error });
-      throw new InternalServerErrorException('Error deleting user');
-    }
+    await this.usersRepository.deleteUser(id);
+    this.logger.log('User marked as deleted', 'UsersService', {
+      userId: id,
+    });
   }
 
-  async deactivateUser(id: string): Promise<void> {
-    try {
-      await this.usersRepository.deactivateUser(id);
-      this.logger.logInfo('User deactivated successfully', { userId: id });
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      this.logger.logError(`Error deactivating user with ID: ${id}`, { error });
-      throw new InternalServerErrorException('Error deactivating user');
+  async updateUserStatus(
+    id: string,
+    status: UserStatus,
+    currentUser: User,
+  ): Promise<UserResponseDto> {
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only admins can change user status');
     }
+
+    const user = await this.usersRepository.getUserById(id);
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    if (user.status === status) {
+      throw new ConflictException(`User is already in ${status} status`);
+    }
+
+    await this.usersRepository.updateUserStatus(id, status);
+    const updatedUser = await this.usersRepository.getUserById(id);
+    this.logger.log('User status updated', 'UsersService', {
+      userId: id,
+      newStatus: status,
+    });
+    return this.userMapper.toResponseDto(updatedUser);
   }
 
-  async activateUser(id: string): Promise<UserResponseDto> {
-    try {
-      const user = await this.usersRepository.getUserById(id);
+  async activateUser(id: string, currentUser: User): Promise<UserResponseDto> {
+    return this.updateUserStatus(id, UserStatus.ACTIVE, currentUser);
+  }
 
-      if (user.status === UserStatus.ACTIVE) {
-        throw new ConflictException('User is already active');
-      }
-
-      const updatedUser = await this.usersRepository.updateUser(id, {
-        status: UserStatus.ACTIVE,
-      });
-      this.logger.logInfo('User activated successfully', { userId: id });
-      return this.userMapper.toResponseDto(updatedUser);
-    } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException
-      ) {
-        throw error;
-      }
-      this.logger.logError(`Error activating user with ID: ${id}`, { error });
-      throw new InternalServerErrorException('Error activating user');
-    }
+  async deactivateUser(
+    id: string,
+    currentUser: User,
+  ): Promise<UserResponseDto> {
+    return this.updateUserStatus(id, UserStatus.DEACTIVATED, currentUser);
   }
 
   async searchUsers(
     query: string,
-    page = 1,
-    limit = 10,
+    paginationOptions: PaginationOptions<User>,
   ): Promise<PaginationResult<UserResponseDto>> {
-    try {
-      const paginationResult = await this.usersRepository.searchUsers(
-        query,
-        page,
-        limit,
-      );
-      const data = paginationResult.data.map((user) =>
-        this.userMapper.toResponseDto(user),
-      );
+    const paginationResult = await this.usersRepository.searchUsers(
+      query,
+      paginationOptions,
+    );
+    const data = paginationResult.data.map((user) =>
+      this.userMapper.toResponseDto(user),
+    );
 
-      this.logger.logInfo('Users search completed', {
-        query,
-        page,
-        limit,
-        total: paginationResult.total,
-      });
+    this.logger.log('Users search completed', 'UsersService', {
+      query,
+      page: paginationResult.page,
+      limit: paginationResult.limit,
+      total: paginationResult.total,
+    });
 
-      return {
-        data,
-        total: paginationResult.total,
-        page: paginationResult.page,
-        limit: paginationResult.limit,
-      };
-    } catch (error) {
-      this.logger.logError('Error searching users', { query, error });
-      throw new InternalServerErrorException('Error searching users');
-    }
+    return {
+      ...paginationResult,
+      data,
+    };
   }
 
   async isEmailUnique(email: string): Promise<boolean> {
-    try {
-      const emailExists = await this.usersRepository.emailExists(email);
-      this.logger.logDebug('Checked email uniqueness', {
-        email,
-        isUnique: !emailExists,
-      });
-      return !emailExists;
-    } catch (error) {
-      this.logger.logError(`Error checking if email is unique for '${email}'`, {
-        error,
-      });
-      throw new InternalServerErrorException(
-        'Error checking if email is unique',
+    return !(await this.usersRepository.emailExists(email));
+  }
+
+  async isUserNameUnique(userName: string): Promise<boolean> {
+    return !(await this.usersRepository.userNameExists(userName));
+  }
+
+  async isFcnUnique(fcn: string): Promise<boolean> {
+    return !(await this.usersRepository.fcnExists(fcn));
+  }
+
+  async isFinUnique(fin: string): Promise<boolean> {
+    return !(await this.usersRepository.finExists(fin));
+  }
+
+  async incrementFailedLoginAttempts(id: string): Promise<void> {
+    await this.usersRepository.incrementFailedLoginAttempts(id);
+    this.logger.log('Incremented failed login attempts', 'UsersService', {
+      userId: id,
+    });
+  }
+
+  private async checkUniqueFields(
+    userData: CreateUserDto | UpdateUserDto,
+  ): Promise<void> {
+    const uniqueFields: (keyof (CreateUserDto | UpdateUserDto))[] = [
+      'email',
+      'userName',
+      'fcn',
+      'fin',
+    ];
+    const existingFields: string[] = [];
+
+    for (const field of uniqueFields) {
+      if (userData[field]) {
+        let isUnique: boolean;
+        switch (field) {
+          case 'email':
+            isUnique = await this.isEmailUnique(userData.email);
+            break;
+          case 'userName':
+            isUnique = await this.isUserNameUnique(userData.userName);
+            break;
+          case 'fcn':
+            isUnique = await this.isFcnUnique(userData.fcn);
+            break;
+          case 'fin':
+            isUnique = await this.isFinUnique(userData.fin);
+            break;
+        }
+        if (!isUnique) {
+          existingFields.push(field);
+        }
+      }
+    }
+
+    if (existingFields.length > 0) {
+      throw new ConflictException(
+        `The following fields already exist: ${existingFields.join(', ')}`,
       );
     }
   }
 
-  // other methods...
+  private async checkEmailUniqueness(email: string): Promise<void> {
+    if (!(await this.isEmailUnique(email))) {
+      throw new ConflictException('Email already in use');
+    }
+  }
+
+  private async checkUserNameUniqueness(userName: string): Promise<void> {
+    if (!(await this.isUserNameUnique(userName))) {
+      throw new ConflictException('Username already in use');
+    }
+  }
+
+  private async checkFcnUniqueness(fcn: string): Promise<void> {
+    if (!(await this.isFcnUnique(fcn))) {
+      throw new ConflictException('FCN already in use');
+    }
+  }
+
+  private async checkFinUniqueness(fin: string): Promise<void> {
+    if (!(await this.isFinUnique(fin))) {
+      throw new ConflictException('FIN already in use');
+    }
+  }
 }

@@ -5,9 +5,16 @@ import {
   MinLength,
   Matches,
   IsEnum,
+  IsDate,
+  Length,
+  IsIn,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { UserRole } from '../entities/user-role.entity';
 import { UserStatus } from '../entities/user-status.entity';
+import { ProviderType } from '../enums/provider-types';
+import { AddressDto } from './address.dto';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -17,6 +24,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString({ message: 'Last name must be a string.' })
   lastName?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Surname must be a string.' })
+  surname?: string;
 
   @IsOptional()
   @IsString({ message: 'User name must be a string.' })
@@ -39,8 +50,39 @@ export class UpdateUserDto {
   password?: string;
 
   @IsOptional()
-  @IsString({ message: 'Phone number must be a string.' })
-  phoneNumber?: string;
+  @IsEnum(ProviderType, { message: 'Provider must be a valid type.' })
+  provider?: ProviderType;
+
+  @IsOptional()
+  @IsEnum(UserStatus, { message: 'Status must be a valid user status.' })
+  status?: UserStatus;
+
+  @IsOptional()
+  @IsDate({ message: 'Date of birth must be a valid date.' })
+  @Type(() => Date)
+  dateOfBirth?: Date;
+
+  @IsOptional()
+  @IsString({ message: 'Nationality must be a string.' })
+  nationality?: string;
+
+  @IsOptional()
+  @IsIn(['male', 'female', 'other'], {
+    message: 'Sex must be male, female, or other.',
+  })
+  sex?: string;
+
+  @IsOptional()
+  @IsString({ message: 'FCN must be a string.' })
+  @Length(16, 16, { message: 'FCN must be exactly 16 digits.' })
+  @Matches(/^\d{16}$/, { message: 'FCN must contain only numbers.' })
+  fcn?: string;
+
+  @IsOptional()
+  @IsString({ message: 'FIN must be a string.' })
+  @Length(12, 12, { message: 'FIN must be exactly 12 digits.' })
+  @Matches(/^\d{12}$/, { message: 'FIN must contain only numbers.' })
+  fin?: string;
 
   @IsOptional()
   @IsEnum(UserRole, {
@@ -49,6 +91,7 @@ export class UpdateUserDto {
   role?: UserRole;
 
   @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
+  @ValidateNested()
+  @Type(() => AddressDto)
+  address?: AddressDto;
 }
