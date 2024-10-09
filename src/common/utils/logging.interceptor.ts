@@ -18,7 +18,6 @@ export class LoggingInterceptor implements NestInterceptor {
     const httpContext = context.switchToHttp();
     const request = httpContext.getRequest();
     const response = httpContext.getResponse();
-
     const method = request.method;
     const url = request.url;
     const clientIp =
@@ -31,23 +30,27 @@ export class LoggingInterceptor implements NestInterceptor {
     const body = maskSensitiveData(request.body);
     const queryParams = maskSensitiveData(request.query);
 
-    this.logger.logInfo(`Incoming Request: [${method}] ${url}`, {
-      ip: clientIp,
-      userAgent,
-      body,
-      queryParams,
-      pathParams: request.params,
-    });
+    this.logger.log(
+      `Incoming Request: [${method}] ${url}`,
+      'LoggingInterceptor',
+      {
+        ip: clientIp,
+        userAgent,
+        body,
+        queryParams,
+        pathParams: request.params,
+      },
+    );
 
     return next.handle().pipe(
       tap({
         next: (responseBody) => {
           const statusCode = response.statusCode;
           const delay = Date.now() - now;
-
           // Log the outgoing response
-          this.logger.logInfo(
+          this.logger.log(
             `Outgoing Response: [${method}] ${url} - Status: ${statusCode} - ${delay}ms`,
+            'LoggingInterceptor',
             {
               responseBody: this.safeStringify(responseBody),
               statusCode,
@@ -57,10 +60,10 @@ export class LoggingInterceptor implements NestInterceptor {
         error: (error) => {
           const statusCode = error.status || response.statusCode || 500;
           const delay = Date.now() - now;
-
           // Log the error response
-          this.logger.logError(
+          this.logger.error(
             `Error Response: [${method}] ${url} - Status: ${statusCode} - ${delay}ms`,
+            'LoggingInterceptor',
             {
               errorMessage: error.message,
               statusCode,

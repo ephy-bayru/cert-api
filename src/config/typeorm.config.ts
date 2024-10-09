@@ -19,43 +19,61 @@ export const typeormConfig = (
   const requiredConfig = ['DB_HOST', 'DB_USERNAME', 'DB_PASSWORD', 'DB_NAME'];
   for (const key of requiredConfig) {
     if (!configService.get<string>(key)) {
-      logger.logError(`Database configuration error: ${key} is missing`);
+      logger.error(
+        `Database configuration error: ${key} is missing`,
+        'TypeOrmConfig',
+        { configKey: key },
+      );
       throw new Error(`Database configuration error: ${key} is missing`);
     }
   }
 
-  const entities = configService.get<string>(
-    'TYPEORM_ENTITIES',
-    isProduction ? 'dist/**/*.entity{.js,.ts}' : 'src/**/*.entity{.js,.ts}',
-  );
-  const migrations = configService.get<string>(
-    'TYPEORM_MIGRATIONS',
-    isProduction ? 'dist/migrations/*{.js,.ts}' : 'src/migrations/*{.js,.ts}',
-  );
+  // Update entity and migration paths based on the environment
+  const entities = isProduction
+    ? [__dirname + '/../../**/*.entity{.js,.ts}']
+    : [__dirname + '/../**/*.entity{.ts,.js}'];
+
+  const migrations = isProduction
+    ? [__dirname + '/../../migrations/*{.js,.ts}']
+    : [__dirname + '/../migrations/*{.ts,.js}'];
 
   // Fetch logging level or options from environment or use custom logger service
   const loggingOptions: LoggerOptions | 'all' =
     databaseLoggerService.determineDatabaseLoggingOptions();
 
+  const dbHost = configService.get<string>('DB_HOST');
+  logger.log(`Attempting to connect to database at ${dbHost}`, 'TypeOrmConfig');
+
+  logger.log('TypeORM configuration initialized', 'TypeOrmConfig', {
+    isProduction,
+    sslEnabled,
+    entities,
+    migrations,
+    loggingOptions,
+    dbHost,
+  });
+
   return {
     type: 'postgres',
-    host: configService.get<string>('DB_HOST'),
+    host: dbHost,
     port: configService.get<number>('DB_PORT', 5432),
     username: configService.get<string>('DB_USERNAME'),
     password: configService.get<string>('DB_PASSWORD'),
     database: configService.get<string>('DB_NAME'),
-    entities: [entities],
+    entities,
     autoLoadEntities: true,
     synchronize: configService.get<boolean>('TYPEORM_SYNC', !isProduction),
     migrationsRun: configService.get<boolean>('TYPEORM_MIGRATIONS_RUN', true),
-    migrations: [migrations],
+    migrations,
     logging: loggingOptions,
     ssl: sslOptions,
     extra: {
       connectionTimeoutMillis: configService.get<number>(
         'DB_CONNECTION_TIMEOUT',
-        3000,
+        30000,
       ),
     },
+    retryAttempts: 5,
+    retryDelay: 3000,
   };
 };
