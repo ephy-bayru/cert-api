@@ -20,7 +20,6 @@ import { UsersService } from '../services/users.service';
 import { CreateUserDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UniqueUserValidationPipe } from '../pipes/unique-user-validation.pipe';
-import { HttpExceptionFilter } from 'src/common/filters/http-exception.filter';
 import { TransformInterceptor } from 'src/common/interceptors/transform.interceptor';
 import {
   FindOneByIdDocs,
@@ -29,14 +28,20 @@ import {
   UpdateUserDocs,
   DeleteUserDocs,
   DeactivateUserDocs,
+  ActivateUserDocs,
   SearchUsersDocs,
+  UpdateUserStatusDocs,
 } from '../documentation/users.controller.documentation';
 import { UserRole } from '../entities/user-role.entity';
 import { Roles } from 'src/common/decorators/roles.decorator';
+import { PaginationOptions } from 'src/common/interfaces/IPagination';
+import { UserStatus } from '../entities/user-status.entity';
+import { User } from '../entities/user.entity';
+import { GlobalExceptionFilter } from 'src/common/filters/global-exception.filter';
 
 @ApiTags('Users')
 @Controller({ path: 'users', version: '1' })
-@UseFilters(HttpExceptionFilter)
+@UseFilters(GlobalExceptionFilter)
 @UseInterceptors(TransformInterceptor)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -54,8 +59,13 @@ export class UsersController {
   async findAllPaginated(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('status') status?: UserStatus,
   ) {
-    return this.usersService.findAllPaginated(page, limit);
+    const paginationOptions: PaginationOptions<User> = { page, limit };
+    if (status) {
+      paginationOptions.options = { where: { status } };
+    }
+    return this.usersService.findAllPaginated(paginationOptions);
   }
 
   @Post()
@@ -88,19 +98,37 @@ export class UsersController {
     await this.usersService.deleteUser(id);
   }
 
-  @Put(':id/deactivate')
+  @Patch(':id/status')
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @UpdateUserStatusDocs()
+  async updateUserStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('status') status: UserStatus,
+    @Req() req: any,
+  ) {
+    const currentUser = req.user;
+    return this.usersService.updateUserStatus(id, status, currentUser);
+  }
+
+  @Patch(':id/deactivate')
   // @UseGuards(JwtAuthGuard)
   @DeactivateUserDocs()
-  async deactivateUser(@Param('id', ParseUUIDPipe) id: string) {
-    await this.usersService.deactivateUser(id);
+  async deactivateUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: any,
+  ) {
+    const currentUser = req.user;
+    return this.usersService.deactivateUser(id, currentUser);
   }
 
   @Patch(':id/activate')
   // @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  @HttpCode(HttpStatus.OK)
-  async activateUser(@Param('id', ParseUUIDPipe) id: string) {
-    return this.usersService.activateUser(id);
+  @ActivateUserDocs()
+  async activateUser(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    const currentUser = req.user;
+    return this.usersService.activateUser(id, currentUser);
   }
 
   @Get('search')
@@ -111,6 +139,7 @@ export class UsersController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ) {
-    return this.usersService.searchUsers(query, page, limit);
+    const paginationOptions: PaginationOptions<User> = { page, limit };
+    return this.usersService.searchUsers(query, paginationOptions);
   }
 }

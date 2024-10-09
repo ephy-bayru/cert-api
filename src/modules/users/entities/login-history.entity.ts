@@ -7,11 +7,7 @@ import {
   Index,
 } from 'typeorm';
 import { User } from './user.entity';
-
-export enum LoginStatus {
-  SUCCESS = 'SUCCESS',
-  FAILURE = 'FAILURE',
-}
+import { LoginStatus } from '../enums/login-status.enum';
 
 @Entity('login_history')
 export class LoginHistory {

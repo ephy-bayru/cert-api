@@ -1,272 +1,162 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
-import { DataSource, ILike, FindOptionsWhere } from 'typeorm';
-import { User, UserStatus } from '../entities/user.entity';
+import { Injectable, ConflictException } from '@nestjs/common';
+import { DataSource, FindOptionsWhere, ILike } from 'typeorm';
+import { User } from '../entities/user.entity';
+import { CreateUserDto } from '../dtos/create-user.dto';
 import { BaseRepository } from 'src/core/repository/base.repository';
-import { PaginationResult } from 'src/common/interfaces/IPagination';
 import { LoggerService } from 'src/common/services/logger.service';
+import {
+  PaginationOptions,
+  PaginationResult,
+} from 'src/common/interfaces/IPagination';
+import { UserStatus } from '../entities/user-status.entity';
 
 @Injectable()
 export class UsersRepository extends BaseRepository<User> {
   constructor(dataSource: DataSource, logger: LoggerService) {
     super(dataSource, User, logger);
-    this.logger.setContext('UsersRepository');
   }
 
-  async createUser(userData: Partial<User>): Promise<User> {
-    try {
-      const emailExists = await this.emailExists(userData.email);
-      if (emailExists) {
-        this.logger.logWarn(`Email already in use: ${userData.email}`);
-        throw new ConflictException(`Email already in use: ${userData.email}`);
-      }
+  async createUser(userData: CreateUserDto): Promise<User> {
+    await this.checkUniqueFields(userData);
+    const user = await this.create(userData);
+    this.logger.log('User created', 'UsersRepository', { id: user.id });
+    return user;
+  }
 
-      const newUser = this.repository.create(userData);
-      const savedUser = await this.repository.save(newUser);
-      this.logger.logInfo('User created successfully', {
-        userId: savedUser.id,
-      });
-      return savedUser;
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
+  private async checkUniqueFields(userData: CreateUserDto): Promise<void> {
+    const uniqueFields: (keyof CreateUserDto)[] = [
+      'email',
+      'userName',
+      'fcn',
+      'fin',
+    ];
+    const existingFields: string[] = [];
+
+    for (const field of uniqueFields) {
+      if (userData[field]) {
+        const exists = await this.exists({
+          [field]: userData[field],
+        } as FindOptionsWhere<User>);
+        if (exists) {
+          existingFields.push(field);
+        }
       }
-      this.logger.logError('Failed to create user', { error, userData });
-      throw new InternalServerErrorException('Failed to create user');
+    }
+
+    if (userData.address?.phoneNumber) {
+      const phoneNumberExists = await this.phoneNumberExists(
+        userData.address.phoneNumber,
+      );
+      if (phoneNumberExists) {
+        existingFields.push('phoneNumber');
+      }
+    }
+
+    if (existingFields.length > 0) {
+      this.logger.warn(
+        'Attempt to create user with existing fields',
+        'UsersRepository',
+        { existingFields },
+      );
+      throw new ConflictException(
+        `The following fields already exist: ${existingFields.join(', ')}`,
+      );
     }
   }
 
   async getUserById(id: string): Promise<User> {
-    try {
-      const user = await this.repository.findOne({ where: { id } });
-      if (!user) {
-        this.logger.logWarn(`User not found with ID: ${id}`);
-        throw new NotFoundException(`User not found with ID: ${id}`);
-      }
-      this.logger.logInfo('User retrieved successfully', { userId: id });
-      return user;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      this.logger.logError(`Failed to retrieve user with ID: ${id}`, { error });
-      throw new InternalServerErrorException('Failed to retrieve user');
+    const user = await this.findOne(id);
+    if (!user) {
+      this.logger.warn('User not found', 'UsersRepository', { id });
     }
+    return user;
   }
 
-  async getUsers(page = 1, limit = 10): Promise<PaginationResult<User>> {
-    try {
-      const [data, total] = await this.repository.findAndCount({
-        skip: (page - 1) * limit,
-        take: limit,
-        order: { createdAt: 'DESC' },
-      });
-
-      this.logger.logInfo('Users retrieved successfully', {
-        page,
-        limit,
-        total,
-      });
-
-      return {
-        data,
-        total,
-        page,
-        limit,
-      };
-    } catch (error) {
-      this.logger.logError('Failed to retrieve users', { error });
-      throw new InternalServerErrorException('Failed to retrieve users');
-    }
+  async getUsers(
+    paginationOptions: PaginationOptions<User>,
+  ): Promise<PaginationResult<User>> {
+    return this.findAll(paginationOptions);
   }
 
   async updateUser(id: string, updateData: Partial<User>): Promise<User> {
-    try {
-      await this.repository.update({ id }, updateData);
-      const updatedUser = await this.getUserById(id);
-      this.logger.logInfo('User updated successfully', { userId: id });
-      return updatedUser;
-    } catch (error) {
-      this.logger.logError(`Failed to update user with ID: ${id}`, { error });
-      throw new InternalServerErrorException('Failed to update user');
-    }
+    await this.update(id, updateData);
+    this.logger.log('User updated', 'UsersRepository', { id });
+    return this.getUserById(id);
   }
 
   async deleteUser(id: string): Promise<void> {
-    try {
-      const user = await this.getUserById(id);
-      await this.repository.softRemove(user);
-      this.logger.logInfo('User deleted successfully', { userId: id });
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      this.logger.logError(`Failed to delete user with ID: ${id}`, { error });
-      throw new InternalServerErrorException('Failed to delete user');
-    }
-  }
-
-  async restoreUser(id: string): Promise<void> {
-    try {
-      await this.repository.restore(id);
-      this.logger.logInfo('User restored successfully', { userId: id });
-    } catch (error) {
-      this.logger.logError(`Failed to restore user with ID: ${id}`, { error });
-      throw new InternalServerErrorException('Failed to restore user');
-    }
+    await this.update(id, { status: UserStatus.DELETED });
+    this.logger.log('User deleted', 'UsersRepository', { id });
   }
 
   async findByEmail(
     email: string,
     includePassword = false,
   ): Promise<User | null> {
-    try {
-      const queryBuilder = this.repository.createQueryBuilder('user');
-
-      queryBuilder.where('LOWER(user.email) = :email', {
-        email: email.trim().toLowerCase(),
-      });
-
-      if (includePassword) {
-        queryBuilder.addSelect('user.password');
-      }
-
-      const user = await queryBuilder.getOne();
-
-      if (!user) {
-        this.logger.logWarn(`No user found for email: ${email}`);
-        return null;
-      }
-
-      this.logger.logInfo('User found by email', { email });
-      return user;
-    } catch (error) {
-      this.logger.logError('Error finding user by email', { email, error });
-      throw new InternalServerErrorException('Error finding user by email');
+    const queryBuilder = this.repository.createQueryBuilder('user');
+    queryBuilder.where('LOWER(user.email) = :email', {
+      email: email.trim().toLowerCase(),
+    });
+    if (includePassword) {
+      queryBuilder.addSelect('user.password');
     }
+    return queryBuilder.getOne();
   }
 
   async emailExists(email: string): Promise<boolean> {
-    try {
-      const count = await this.repository.count({
-        where: { email: email.trim().toLowerCase() },
-      });
-      this.logger.logDebug('Checked email existence', {
-        email,
-        exists: count > 0,
-      });
-      return count > 0;
-    } catch (error) {
-      this.logger.logError('Failed to check email existence', { email, error });
-      throw new InternalServerErrorException('Failed to check email existence');
-    }
+    return this.exists({ email: email.trim().toLowerCase() });
   }
 
   async userNameExists(userName: string): Promise<boolean> {
-    try {
-      const count = await this.repository.count({
-        where: { userName: userName.trim() },
-      });
-      this.logger.logDebug('Checked username existence', {
-        userName,
-        exists: count > 0,
-      });
-      return count > 0;
-    } catch (error) {
-      this.logger.logError('Failed to check username existence', {
-        userName,
-        error,
-      });
-      throw new InternalServerErrorException(
-        'Failed to check username existence',
-      );
-    }
+    return this.exists({ userName: userName.trim() });
   }
 
-  async deactivateUser(id: string): Promise<void> {
-    try {
-      const result = await this.repository.update(
-        { id },
-        { status: UserStatus.DEACTIVATED },
-      );
-      if (result.affected === 0) {
-        this.logger.logWarn(
-          `User not found or already deactivated with ID: ${id}`,
-        );
-        throw new NotFoundException(`User not found with ID: ${id}`);
-      }
-      this.logger.logInfo('User deactivated successfully', { userId: id });
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      this.logger.logError(`Failed to deactivate user with ID: ${id}`, {
-        error,
-      });
-      throw new InternalServerErrorException('Failed to deactivate user');
-    }
+  async fcnExists(fcn: string): Promise<boolean> {
+    return this.exists({ fcn });
+  }
+
+  async finExists(fin: string): Promise<boolean> {
+    return this.exists({ fin });
+  }
+
+  async phoneNumberExists(phoneNumber: string): Promise<boolean> {
+    return this.exists({ address: { phoneNumber } } as FindOptionsWhere<User>);
+  }
+
+  async updateUserStatus(id: string, status: UserStatus): Promise<void> {
+    await this.update(id, { status });
+    this.logger.log('User status updated', 'UsersRepository', {
+      id,
+      status,
+    });
   }
 
   async searchUsers(
     query: string,
-    page = 1,
-    limit = 10,
+    paginationOptions: PaginationOptions<User>,
   ): Promise<PaginationResult<User>> {
-    try {
-      const where: FindOptionsWhere<User>[] = [
-        { email: ILike(`%${query}%`) },
-        { phoneNumber: ILike(`%${query}%`) },
-        { userName: ILike(`%${query}%`) },
-      ];
-
-      const [data, total] = await this.repository.findAndCount({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        order: { createdAt: 'DESC' },
-      });
-
-      this.logger.logInfo('Users search completed', {
-        query,
-        page,
-        limit,
-        total,
-      });
-
-      return {
-        data,
-        total,
-        page,
-        limit,
-      };
-    } catch (error) {
-      this.logger.logError('An error occurred while searching for users', {
-        query,
-        error,
-      });
-      throw new InternalServerErrorException(
-        'An error occurred while searching for users',
-      );
-    }
+    const where: FindOptionsWhere<User>[] = [
+      { email: ILike(`%${query}%`) },
+      { userName: ILike(`%${query}%`) },
+      { fcn: ILike(`%${query}%`) },
+      { fin: ILike(`%${query}%`) },
+      { address: { phoneNumber: ILike(`%${query}%`) } },
+    ];
+    return this.findAll({ ...paginationOptions, options: { where } });
   }
 
-  // Example: Increment failed login attempts
   async incrementFailedLoginAttempts(id: string): Promise<void> {
-    try {
-      await this.repository.increment({ id }, 'failedLoginAttempts', 1);
-      this.logger.logInfo('Incremented failed login attempts', { userId: id });
-    } catch (error) {
-      this.logger.logError(
-        `Failed to increment failed login attempts for user ID: ${id}`,
-        { error },
-      );
-      throw new InternalServerErrorException(
-        'Failed to update failed login attempts',
-      );
-    }
+    await this.repository.increment({ id }, 'failedLoginAttempts', 1);
+    this.logger.warn('Failed login attempt', 'UsersRepository', { id });
+  }
+
+  async getUsersByStatus(
+    status: UserStatus,
+    paginationOptions: PaginationOptions<User>,
+  ): Promise<PaginationResult<User>> {
+    return this.findAll({
+      ...paginationOptions,
+      options: { where: { status } },
+    });
   }
 }

@@ -2,12 +2,26 @@ import { Injectable } from '@nestjs/common';
 import { HealthIndicator, HealthIndicatorResult } from '@nestjs/terminus';
 import * as os from 'os';
 import { LoggerService } from 'src/common/services/logger.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class CustomHealthIndicator extends HealthIndicator {
-  constructor(private readonly logger: LoggerService) {
+  private readonly memoryThreshold: number;
+  private readonly cpuLoadThreshold: number;
+
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly configService: ConfigService,
+  ) {
     super();
-    this.logger.setContext('CustomHealthIndicator');
+    this.memoryThreshold = this.configService.get<number>(
+      'MEMORY_THRESHOLD',
+      0.05,
+    );
+    this.cpuLoadThreshold = this.configService.get<number>(
+      'CPU_LOAD_THRESHOLD',
+      2.0,
+    );
   }
 
   async isHealthy(key: string): Promise<HealthIndicatorResult> {
@@ -19,7 +33,6 @@ export class CustomHealthIndicator extends HealthIndicator {
       ]);
 
     const isHealthy = serviceHealth && memoryUsageHealthy && cpuLoadHealthy;
-
     const healthDetails = {
       serviceHealth,
       memoryUsage: this.getMemoryUsageDetails(),
@@ -32,7 +45,6 @@ export class CustomHealthIndicator extends HealthIndicator {
     };
 
     const result = this.getStatus(key, isHealthy, healthDetails);
-
     this.logHealthStatus(isHealthy, result);
     return result;
   }
@@ -40,21 +52,25 @@ export class CustomHealthIndicator extends HealthIndicator {
   private async checkServiceHealth(): Promise<boolean> {
     try {
       // Replace with actual service check logic
-      return true;
+      // return true;
     } catch (error) {
-      this.logger.logError('Custom service health check failed', { error });
+      this.logger.error(
+        'Custom service health check failed',
+        'CustomHealthIndicator',
+        { error },
+      );
       return false;
     }
   }
 
   private checkMemoryUsage(): boolean {
     const freeMemoryRatio = os.freemem() / os.totalmem();
-    const memoryThreshold = parseFloat(process.env.MEMORY_THRESHOLD || '0.05');
-
-    if (freeMemoryRatio < memoryThreshold) {
-      this.logger.logWarn('Memory usage exceeded the threshold', {
-        freeMemoryRatio,
-      });
+    if (freeMemoryRatio < this.memoryThreshold) {
+      this.logger.warn(
+        'Memory usage exceeded the threshold',
+        'CustomHealthIndicator',
+        { freeMemoryRatio },
+      );
       return false;
     }
     return true;
@@ -62,19 +78,20 @@ export class CustomHealthIndicator extends HealthIndicator {
 
   private checkCpuLoad(): boolean {
     const avgCpuLoad = os.loadavg()[0];
-    const cpuLoadThreshold = parseFloat(
-      process.env.CPU_LOAD_THRESHOLD || '2.0',
-    );
-
-    if (avgCpuLoad > cpuLoadThreshold) {
-      this.logger.logWarn('CPU load exceeded the threshold', { avgCpuLoad });
+    if (avgCpuLoad > this.cpuLoadThreshold) {
+      this.logger.warn(
+        'CPU load exceeded the threshold',
+        'CustomHealthIndicator',
+        { avgCpuLoad },
+      );
       return false;
     }
     return true;
   }
 
   private getMemoryUsageDetails() {
-    return process.memoryUsage();
+    const { rss, heapTotal, heapUsed, external } = process.memoryUsage();
+    return { rss, heapTotal, heapUsed, external };
   }
 
   private getCpuLoadDetails() {
@@ -95,10 +112,10 @@ export class CustomHealthIndicator extends HealthIndicator {
   }
 
   private logHealthStatus(isHealthy: boolean, result: HealthIndicatorResult) {
-    if (isHealthy) {
-      this.logger.logInfo('System is healthy', result);
-    } else {
-      this.logger.logWarn('System health is degraded', result);
-    }
+    const logMethod = isHealthy ? this.logger.log : this.logger.warn;
+    const message = isHealthy
+      ? 'System is healthy'
+      : 'System health is degraded';
+    logMethod(message, 'CustomHealthIndicator', result);
   }
 }

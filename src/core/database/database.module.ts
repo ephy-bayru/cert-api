@@ -3,8 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DatabaseService } from './database.service';
 import { DatabaseLoggerService } from '../services/database-logger.service';
-import { LoggerService } from 'src/common/services/logger.service';
 import { typeormConfig } from 'src/config/typeorm.config';
+import { LoggerService } from 'src/common/services/logger.service';
 
 @Global()
 @Module({
@@ -16,23 +16,30 @@ import { typeormConfig } from 'src/config/typeorm.config';
       useFactory: (
         configService: ConfigService,
         databaseLoggerService: DatabaseLoggerService,
-        logger: LoggerService,
+        loggerService: LoggerService,
       ) => {
         try {
           const typeormOptions = typeormConfig(
             configService,
             databaseLoggerService,
-            logger,
+            loggerService,
+          );
+          loggerService.log(
+            'TypeORM configuration loaded successfully',
+            'DatabaseModule',
+            { typeormOptions },
           );
           return typeormOptions;
         } catch (error) {
-          logger.logError('Error configuring TypeORM', { error });
+          loggerService.error('Error configuring TypeORM', 'DatabaseModule', {
+            error: error instanceof Error ? error.message : String(error),
+          });
           throw new Error('Failed to configure TypeORM');
         }
       },
     }),
   ],
-  providers: [DatabaseService, DatabaseLoggerService, LoggerService],
+  providers: [DatabaseService, DatabaseLoggerService],
   exports: [DatabaseService, DatabaseLoggerService],
 })
 export class DatabaseModule {}

@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, InternalServerErrorException } from '@nestjs/common';
 import {
   HealthCheck,
   HealthCheckService,
@@ -7,18 +7,18 @@ import {
   MemoryHealthIndicator,
   HealthIndicatorResult,
 } from '@nestjs/terminus';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags, ApiResponse } from '@nestjs/swagger';
 import { CustomHealthIndicator } from './indicators/custom.health';
-import { LoggerService } from 'src/common/services/logger.service';
 import { ConfigService } from '@nestjs/config';
+import { LoggerService } from 'src/common/services/logger.service';
 
-@ApiTags('Health Check')
+@ApiTags('Health')
 @Controller({ path: 'health', version: '1' })
 export class HealthController {
-  private readonly memoryHeapThreshold: number;
-  private readonly memoryRSSThreshold: number;
-  private readonly dbHealthTimeout: number;
-  private readonly externalServiceUrl: string;
+  private memoryHeapThreshold: number;
+  private memoryRSSThreshold: number;
+  private dbHealthTimeout: number;
+  private externalServiceUrl: string;
 
   constructor(
     private readonly health: HealthCheckService,
@@ -29,8 +29,10 @@ export class HealthController {
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
   ) {
-    this.logger.setContext('HealthController');
-    // Extract configuration values
+    this.initializeConfig();
+  }
+
+  private initializeConfig(): void {
     this.memoryHeapThreshold = this.configService.get<number>(
       'MEMORY_HEAP_THRESHOLD',
       150 * 1024 * 1024,
@@ -47,11 +49,24 @@ export class HealthController {
       'EXTERNAL_SERVICE_URL',
       'https://ephrembayru.com/',
     );
+
+    this.logger.log(
+      'HealthController configuration initialized',
+      'HealthController',
+      {
+        memoryHeapThreshold: this.memoryHeapThreshold,
+        memoryRSSThreshold: this.memoryRSSThreshold,
+        dbHealthTimeout: this.dbHealthTimeout,
+        externalServiceUrl: this.externalServiceUrl,
+      },
+    );
   }
 
   @Get()
   @HealthCheck()
   @ApiOperation({ summary: 'Performs a complete system health check' })
+  @ApiResponse({ status: 200, description: 'Health check successful' })
+  @ApiResponse({ status: 500, description: 'Health check failed' })
   async checkHealth() {
     try {
       const result = await this.health.check([
@@ -62,16 +77,18 @@ export class HealthController {
         () => this.customHealth.isHealthy('systemHealth'),
       ]);
 
-      this.logger.logInfo('Health check successful', result);
+      this.logger.log('Health check successful', 'HealthController', result);
       return { status: result.status, info: result.info };
     } catch (error) {
-      this.logger.logError('Health check failed', { error });
-      throw error;
+      this.logger.error('Health check failed', 'HealthController', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new InternalServerErrorException('Health check failed');
     }
   }
 
   private async checkDatabase(): Promise<HealthIndicatorResult> {
-    this.logger.logDebug('Checking database health', {
+    this.logger.debug('Checking database health', 'HealthController', {
       timeout: this.dbHealthTimeout,
     });
 
@@ -93,7 +110,7 @@ export class HealthController {
   }
 
   private checkExternalService() {
-    this.logger.logDebug('Checking external service health', {
+    this.logger.debug('Checking external service health', 'HealthController', {
       url: this.externalServiceUrl,
     });
     return this.http.pingCheck('externalService', this.externalServiceUrl);

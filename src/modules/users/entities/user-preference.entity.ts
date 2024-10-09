@@ -1,12 +1,22 @@
-import { Column } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
+import { User } from './user.entity';
+import { ThemePreference } from '../enums/theme-preference.enum';
 
-export enum ThemePreference {
-  LIGHT = 'light',
-  DARK = 'dark',
-  SYSTEM = 'system',
-}
-
+@Entity('user_preferences')
 export class UserPreferences {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @OneToOne(() => User, (user) => user.preferences)
+  @JoinColumn()
+  user: User;
+
   @Column({ default: true })
   receiveEmailNotifications: boolean;
 
@@ -25,7 +35,6 @@ export class UserPreferences {
   @Column({ default: true })
   receiveSecurityAlerts: boolean;
 
-  // Language and Locale
   @Column({ default: 'en' })
   language: string;
 
@@ -35,7 +44,7 @@ export class UserPreferences {
   @Column({
     type: 'enum',
     enum: ThemePreference,
-    default: ThemePreference.SYSTEM,
+    default: ThemePreference.DARK,
   })
   themePreference: ThemePreference;
 
@@ -48,14 +57,12 @@ export class UserPreferences {
   @Column({ default: true })
   personalizedContent: boolean;
 
-  // Privacy Settings
   @Column({ default: true })
   shareActivityStatus: boolean;
 
   @Column({ default: true })
   showOnlineStatus: boolean;
 
-  // Security Settings
   @Column({ default: false })
   rememberDevice: boolean;
 
