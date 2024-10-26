@@ -10,6 +10,7 @@ import {
   OneToMany,
   Index,
   VersionColumn,
+  Check,
 } from 'typeorm';
 import { Organization } from '@modules/organizations/entities/organization.entity';
 import { User } from '@modules/users/entities/user.entity';
@@ -18,6 +19,7 @@ import { AuditLog } from '@modules/audit/entities/audit-log.entity';
 import { DocumentStatus } from './document-status.enum';
 
 @Entity('documents')
+@Check(`"file_size" > 0`)
 export class Document {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -29,25 +31,25 @@ export class Document {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column()
-  fileUrl: string; // Encrypted file URL or path
+  @Column({ name: 'file_url' })
+  fileUrl: string;
 
   @Index()
-  @Column()
-  fileHash: string; // SHA-256 hash of the document
+  @Column({ name: 'file_hash' })
+  fileHash: string;
 
-  @Column({ type: 'bigint' })
+  @Column({ type: 'bigint', name: 'file_size' })
   fileSize: number;
 
   @Index()
-  @Column({ length: 100 })
+  @Column({ length: 100, name: 'file_type' })
   fileType: string;
 
   @Index()
-  @Column({ nullable: true, length: 100 })
+  @Column({ nullable: true, length: 100, name: 'document_type' })
   documentType?: string;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'date', nullable: true, name: 'expiry_date' })
   expiryDate?: Date;
 
   @Column('simple-array', { nullable: true })
@@ -63,6 +65,39 @@ export class Document {
 
   @ManyToOne(() => User, (user) => user.documents)
   owner: User;
+
+  @Column({ name: 'owner_id' })
+  ownerId: string;
+
+  @ManyToOne(() => User, (user) => user.uploadedDocuments)
+  uploader: User;
+
+  @Column({ name: 'uploader_id' })
+  uploaderId: string;
+
+  @ManyToOne(() => Organization, (org) => org.uploadedDocuments, {
+    nullable: true,
+  })
+  uploadingOrganization: Organization;
+
+  @Column({ name: 'uploading_organization_id', nullable: true })
+  uploadingOrganizationId: string;
+
+  @ManyToMany(() => User, (user) => user.accessibleDocuments)
+  @JoinTable({
+    name: 'document_user_access',
+    joinColumn: { name: 'document_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
+  })
+  usersWithAccess: User[];
+
+  @ManyToMany(() => Organization, (org) => org.accessibleDocuments)
+  @JoinTable({
+    name: 'document_organization_access',
+    joinColumn: { name: 'document_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'organization_id', referencedColumnName: 'id' },
+  })
+  organizationsWithAccess: Organization[];
 
   @ManyToMany(
     () => Organization,
@@ -89,36 +124,42 @@ export class Document {
   })
   verifiedByOrganizations: Organization[];
 
+  @Column({ type: 'jsonb', nullable: true, name: 'verification_statuses' })
+  verificationStatuses?: Record<string, DocumentStatus>; // organizationId: status
+
   @OneToMany(() => AuditLog, (auditLog) => auditLog.document)
   auditLogs: AuditLog[];
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'latest_audit_log_id' })
   latestAuditLogId?: string;
 
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'blockchain_tx_hash' })
   blockchainTxHash?: string;
 
   @VersionColumn()
   version: number;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'submitted_at' })
   submittedAt?: Date;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'last_verified_at' })
   lastVerifiedAt?: Date;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'revoked_at' })
   revokedAt?: Date;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'archived_at' })
   archivedAt?: Date;
+
+  @Column({ default: false, name: 'is_deleted' })
+  isDeleted: boolean;
 }

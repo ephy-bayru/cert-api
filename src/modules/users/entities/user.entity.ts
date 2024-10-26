@@ -171,6 +171,12 @@ export class User {
   @OneToMany(() => Document, (document) => document.owner, { lazy: true })
   documents: Promise<Document[]>;
 
+  @OneToMany(() => Document, (document) => document.uploader)
+  uploadedDocuments: Document[];
+
+  @ManyToMany(() => Document, (document) => document.usersWithAccess)
+  accessibleDocuments: Document[];
+  
   @ManyToMany(() => Organization, (organization) => organization.users, {
     lazy: true,
   })

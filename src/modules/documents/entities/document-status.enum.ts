@@ -8,6 +8,7 @@ export enum DocumentStatus {
   // Document is queued for review
   IN_QUEUE = 'IN_QUEUE',
 
+  PENDING_VERIFICATION = 'PENDING_VERIFICATION',
   // Document is currently being reviewed
   UNDER_REVIEW = 'UNDER_REVIEW',
 

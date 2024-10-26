@@ -1,18 +1,23 @@
-import { IsString, IsOptional, IsArray, IsEnum, IsDate } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  IsEnum,
+  IsDate,
+  IsUUID,
+} from 'class-validator';
 import { DocumentStatus } from '../entities/document-status.enum';
 
-export class UpdateDocumentDto {
-  @IsOptional()
+export class CreateDocumentDto {
   @IsString()
-  title?: string;
+  title: string;
 
   @IsOptional()
   @IsString()
   description?: string;
 
-  @IsOptional()
   @IsString()
-  documentType?: string;
+  documentType: string;
 
   @IsOptional()
   @IsDate()
@@ -23,11 +28,15 @@ export class UpdateDocumentDto {
   @IsString({ each: true })
   tags?: string[];
 
-  @IsOptional()
   @IsEnum(DocumentStatus)
-  status?: DocumentStatus;
+  status: DocumentStatus;
+
+  @IsUUID()
+  ownerId: string;
 
   @IsOptional()
   @IsString()
   metadata?: string;
+
+  // Note: File will be handled separately in the controller
 }

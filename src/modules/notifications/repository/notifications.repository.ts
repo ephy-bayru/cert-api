@@ -90,4 +90,27 @@ export class NotificationRepository extends BaseRepository<Notification> {
       options: queryOptions,
     });
   }
+
+  async getFailedNotifications(
+    paginationOptions: PaginationQueryDto = { page: 1, limit: 10 },
+  ): Promise<PaginationResult<Notification>> {
+    const { page = 1, limit = 10 } = paginationOptions;
+    const queryBuilder = this.repository
+      .createQueryBuilder('notification')
+      .where('notification.status = :status', {
+        status: NotificationStatus.FAILED,
+      })
+      .orderBy('notification.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [notifications, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      data: notifications,
+      total,
+      page,
+      limit,
+    };
+  }
 }

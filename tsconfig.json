@@ -12,17 +12,32 @@
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
-    "strictNullChecks": false,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
     "paths": {
       "@common/*": ["src/common/*"],
       "@core/*": ["src/core/*"],
       "@modules/*": ["src/modules/*"],
       "@config/*": ["src/config/*"],
-      "@src/*": ["src/*"]
-    }
-  }
+      "@src/*": ["src/*"],
+      "@blockchain/*": ["src/blockchain/*"]
+    },
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "lib": ["ES2021"],
+    "moduleResolution": "node",
+    "noEmit": true
+  },
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "hardhat.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

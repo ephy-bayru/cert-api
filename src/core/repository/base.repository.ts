@@ -207,10 +207,10 @@ export class BaseRepository<T extends IBaseEntity>
   }
 
   private parseSortOption(
-    sort: Array<{ field: string; order: 'ASC' | 'DESC' }>,
+    sort: Array<{ field: keyof T; order: 'ASC' | 'DESC' }>,
   ): FindOptionsOrder<T> {
     return sort.reduce((acc, { field, order }) => {
-      acc[field] = order;
+      (acc as any)[field] = order;
       return acc;
     }, {} as FindOptionsOrder<T>);
   }

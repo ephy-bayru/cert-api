@@ -1,18 +1,19 @@
 import { DocumentBuilder, SwaggerCustomOptions } from '@nestjs/swagger';
 
+// Update the API version if it has changed
 export const swaggerConfig = new DocumentBuilder()
   .setTitle('Cert API')
   .setDescription(
     `
     The Cert API is a comprehensive document authentication and management system. It supports multiple user types and provides a wide range of functionalities:
 
-    - Users: Regular users can register, login, manage their profile, upload documents, and track document statuses.
-    - Organizations: Can review, authorize, and manage documents submitted by users.
-    - Admins: Have overall system management capabilities.
-    - Documents: Upload, verification, and management of various document types.
-    - Authentication: Secure login and registration processes with role-based access control.
-    - Verifications: Process for verifying and validating submitted documents.
-    - Notifications: Advanced system for keeping users and organizations informed about important events and status changes.
+    - **Users**: Regular users can register, login, manage their profile, upload documents, and track document statuses.
+    - **Organizations**: Can review, authorize, and manage documents submitted by users.
+    - **Admins**: Have overall system management capabilities.
+    - **Documents**: Upload, verification, and management of various document types.
+    - **Authentication**: Secure login and registration processes with role-based access control.
+    - **Verifications**: Process for verifying and validating submitted documents.
+    - **Notifications**: Advanced system for keeping users and organizations informed about important events and status changes.
 
     Built with NestJS and TypeORM, the API integrates PostgreSQL for secure and reliable data management, ensuring data consistency and integrity. It implements robust security measures including encryption, rate limiting, and comprehensive error handling.
 
@@ -33,9 +34,10 @@ export const swaggerConfig = new DocumentBuilder()
     The API uses standard HTTP status codes and returns detailed error messages to help with debugging.
   `,
   )
-  .setVersion('1.0')
+  .setVersion('1.0') // Update version if necessary
   .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
   .addApiKey({ type: 'apiKey', name: 'X-API-KEY', in: 'header' }, 'API_KEY')
+  // Ensure all tags used in controllers are included here
   .addTag('Auth', 'Authentication and authorization endpoints')
   .addTag('Users', 'User account management endpoints')
   .addTag('Organizations', 'Organization management endpoints')
@@ -54,6 +56,8 @@ export const swaggerConfig = new DocumentBuilder()
     'Audit Logs',
     'Endpoints for managing and retrieving system audit logs',
   )
+  // Add any new tags introduced
+  // .addTag('NewTag', 'Description of the new tag')
   .setContact(
     'Cert API Support',
     'https://cert-api.com',
@@ -92,7 +96,7 @@ export const swaggerCustomOptions: SwaggerCustomOptions = {
   },
   customSiteTitle: 'Cert API Documentation',
   customCss: '.swagger-ui .topbar { display: none }',
-  customfavIcon: '/assets/favicon.ico',
+  // customfavIcon: '/assets/favicon.ico',
 };
 
 export const globalApiResponses = {
@@ -136,8 +140,8 @@ export const applySwaggerGlobalApiResponses = (document: any) => {
   for (const path in document.paths) {
     for (const method in document.paths[path]) {
       document.paths[path][method].responses = {
-        ...globalApiResponses,
         ...document.paths[path][method].responses,
+        ...globalApiResponses,
       };
     }
   }

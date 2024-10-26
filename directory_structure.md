@@ -1,4 +1,5 @@
 cert-api/
+    |-- .DS_Store
     |-- .env
     |-- .eslintrc.js
     |-- .gitignore
@@ -9,9 +10,7 @@ cert-api/
     |-- directory_structure.md
     |-- list_project_structure.py
     |-- logs/
-        |-- app-2024-10-06.log
-        |-- app-2024-10-07.log
-        |-- app-2024-10-08.log
+        |-- app-2024-10-09.log
     |-- nest-cli.json
     |-- package.json
     |-- src/
@@ -20,6 +19,19 @@ cert-api/
         |-- app.module.ts
         |-- app.service.ts
         |-- app.ts
+        |-- blockchain/
+            |-- abis/
+                |-- DocumentVerification.json
+            |-- blockchain.module.ts
+            |-- contracts/
+                |-- DocumentVerification.sol
+                |-- Proxy.sol
+                |-- ProxyAdmin.sol
+            |-- scripts/
+                |-- deploy-contracts.ts
+                |-- verify-contracts.ts
+            |-- services/
+                |-- blockchain.service.ts
         |-- common/
             |-- common.module.ts
             |-- decorators/
@@ -31,7 +43,6 @@ cert-api/
                 |-- pagination-query.dto.ts
             |-- filters/
                 |-- global-exception.filter.ts
-            |-- guards/
             |-- interceptors/
                 |-- transform.interceptor.ts
             |-- interfaces/
@@ -110,7 +121,6 @@ cert-api/
                 |-- entities/
                     |-- document-status.enum.ts
                     |-- document.entity.ts
-                |-- enums/
                 |-- interfaces/
                     |-- document.interface.ts
                 |-- repository/
@@ -167,7 +177,6 @@ cert-api/
                 |-- entities/
                     |-- organization-status.enum.ts
                     |-- organization.entity.ts
-                |-- enums/
                 |-- interfaces/
                     |-- organization.interface.ts
                 |-- organizations.module.ts
@@ -204,7 +213,6 @@ cert-api/
                     |-- login-status.enum.ts
                     |-- provider-types.ts
                     |-- theme-preference.enum.ts
-                |-- interfaces/
                 |-- pipes/
                     |-- unique-user-validation.pipe.ts
                 |-- repository/
@@ -213,7 +221,6 @@ cert-api/
                     |-- seed.service.ts
                     |-- users.service.ts
                 |-- users.module.ts
-                |-- validations/
             |-- verifications/
                 |-- controllers/
                     |-- verifications.controller.ts
@@ -227,7 +234,6 @@ cert-api/
                 |-- entities/
                     |-- verification-status.enum.ts
                     |-- verification.entity.ts
-                |-- enums/
                 |-- interfaces/
                     |-- verification.interface.ts
                 |-- repository/
@@ -240,6 +246,7 @@ cert-api/
         |-- server.ts
     |-- test/
         |-- app.e2e-spec.ts
+        |-- blockchain/
         |-- jest-e2e.json
     |-- tsconfig.build.json
     |-- tsconfig.json

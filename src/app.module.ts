@@ -11,6 +11,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from '@modules/audit/audit.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { DocumentsModule } from '@modules/documents/documents.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DatabaseModule,
     NotificationsModule,
     AuditModule,
+    DocumentsModule
   ],
   controllers: [AppController],
   providers: [

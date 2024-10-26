@@ -68,7 +68,7 @@ export class Organization {
   @ManyToMany(() => User, (user) => user.organizations)
   users: User[];
 
-  @OneToMany(() => Document, (document) => document.verifiedByOrganization)
+  @OneToMany(() => Document, (document) => document.verifiedByOrganizations)
   verifiedDocuments: Document[];
 
   @OneToMany(() => Notification, (notification) => notification.organization)
@@ -87,6 +87,12 @@ export class Organization {
 
   @ManyToMany(() => Document, (document) => document.verificationRequests)
   requestedDocuments: Document[];
+
+  @OneToMany(() => Document, (document) => document.uploadingOrganization)
+  uploadedDocuments: Document[];
+
+  @ManyToMany(() => Document, (document) => document.organizationsWithAccess)
+  accessibleDocuments: Document[];
 
   @OneToMany(() => AuditLog, (auditLog) => auditLog.organization)
   auditLogs: AuditLog[];

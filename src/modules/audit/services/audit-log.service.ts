@@ -101,7 +101,10 @@ export class AuditLogService {
   ): Promise<{ buffer: Buffer; contentType: string }> {
     try {
       const { data } = await this.findAll(filters);
-      return await this.exportData(data, filters.exportFormat);
+
+      const exportFormat = filters.exportFormat || 'csv';
+
+      return await this.exportData(data, exportFormat);
     } catch (error) {
       this.handleError('Error exporting audit logs', error, filters);
     }
