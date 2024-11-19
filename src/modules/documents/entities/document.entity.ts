@@ -14,16 +14,27 @@ import {
 } from 'typeorm';
 import { Organization } from '@modules/organizations/entities/organization.entity';
 import { User } from '@modules/users/entities/user.entity';
+import { OrganizationUser } from '@modules/organizations/entities/organization-user.entity';
 import { Verification } from '@modules/verifications/entities/verification.entity';
 import { AuditLog } from '@modules/audit/entities/audit-log.entity';
 import { DocumentStatus } from './document-status.enum';
+import { DocumentType } from './document-type.enum';
+import { DocumentAccessLevel } from './document-access-level.enum';
 
+/**
+ * Document Entity represents files that can be:
+ * - Uploaded by users
+ * - Verified by organizations
+ * - Shared with specific users/organizations
+ * - Tracked through blockchain
+ */
 @Entity('documents')
 @Check(`"file_size" > 0`)
 export class Document {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  // Basic Document Information
   @Index()
   @Column({ length: 200 })
   title: string;
@@ -31,6 +42,19 @@ export class Document {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Index()
+  @Column({ 
+    type: 'enum',
+    enum: DocumentType,
+    nullable: true,
+    name: 'document_type'
+  })
+  documentType?: DocumentType;
+
+  @Column('simple-array', { nullable: true })
+  tags?: string[];
+
+  // File Information
   @Column({ name: 'file_url' })
   fileUrl: string;
 
@@ -45,16 +69,7 @@ export class Document {
   @Column({ length: 100, name: 'file_type' })
   fileType: string;
 
-  @Index()
-  @Column({ nullable: true, length: 100, name: 'document_type' })
-  documentType?: string;
-
-  @Column({ type: 'date', nullable: true, name: 'expiry_date' })
-  expiryDate?: Date;
-
-  @Column('simple-array', { nullable: true })
-  tags?: string[];
-
+  // Document Status and Lifecycle
   @Index()
   @Column({
     type: 'enum',
@@ -63,7 +78,11 @@ export class Document {
   })
   status: DocumentStatus;
 
-  @ManyToOne(() => User, (user) => user.documents)
+  @Column({ type: 'date', nullable: true, name: 'expiry_date' })
+  expiryDate?: Date;
+
+  // Ownership Information
+  @ManyToOne(() => User, (user) => user.ownedDocuments)
   owner: User;
 
   @Column({ name: 'owner_id' })
@@ -75,14 +94,7 @@ export class Document {
   @Column({ name: 'uploader_id' })
   uploaderId: string;
 
-  @ManyToOne(() => Organization, (org) => org.uploadedDocuments, {
-    nullable: true,
-  })
-  uploadingOrganization: Organization;
-
-  @Column({ name: 'uploading_organization_id', nullable: true })
-  uploadingOrganizationId: string;
-
+  // Document Access Management
   @ManyToMany(() => User, (user) => user.accessibleDocuments)
   @JoinTable({
     name: 'document_user_access',
@@ -91,7 +103,7 @@ export class Document {
   })
   usersWithAccess: User[];
 
-  @ManyToMany(() => Organization, (org) => org.accessibleDocuments)
+  @ManyToMany(() => Organization)
   @JoinTable({
     name: 'document_organization_access',
     joinColumn: { name: 'document_id', referencedColumnName: 'id' },
@@ -99,49 +111,46 @@ export class Document {
   })
   organizationsWithAccess: Organization[];
 
-  @ManyToMany(
-    () => Organization,
-    (organization) => organization.requestedDocuments,
-  )
-  @JoinTable({
-    name: 'document_verification_requests',
-    joinColumn: { name: 'document_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'organization_id', referencedColumnName: 'id' },
-  })
-  verificationRequests: Organization[];
-
+  // Verification Management
   @OneToMany(() => Verification, (verification) => verification.document)
   verifications: Verification[];
 
-  @ManyToMany(
-    () => Organization,
-    (organization) => organization.verifiedDocuments,
-  )
-  @JoinTable({
-    name: 'document_verifications',
-    joinColumn: { name: 'document_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'organization_id', referencedColumnName: 'id' },
-  })
-  verifiedByOrganizations: Organization[];
-
   @Column({ type: 'jsonb', nullable: true, name: 'verification_statuses' })
-  verificationStatuses?: Record<string, DocumentStatus>; // organizationId: status
+  verificationStatuses?: {
+    organizationId: string;
+    status: DocumentStatus;
+    verifiedBy: string; // OrganizationUser ID
+    verifiedAt: Date;
+    comments?: string;
+  }[];
 
-  @OneToMany(() => AuditLog, (auditLog) => auditLog.document)
-  auditLogs: AuditLog[];
+  // Document Access History
+  @Column({ type: 'jsonb', nullable: true, name: 'access_history' })
+  accessHistory?: {
+    userId?: string;
+    organizationId?: string;
+    accessType: 'VIEW' | 'DOWNLOAD' | 'VERIFY';
+    timestamp: Date;
+    ipAddress?: string;
+  }[];
 
-  @Column({ nullable: true, name: 'latest_audit_log_id' })
-  latestAuditLogId?: string;
-
-  @Column({ type: 'jsonb', nullable: true })
-  metadata?: Record<string, any>;
-
+  // Blockchain Integration
   @Column({ nullable: true, name: 'blockchain_tx_hash' })
   blockchainTxHash?: string;
 
+  @Column({ type: 'jsonb', nullable: true, name: 'blockchain_metadata' })
+  blockchainMetadata?: {
+    networkId: string;
+    contractAddress: string;
+    tokenId?: string;
+    verificationProof?: string;
+  };
+
+  // Version Control
   @VersionColumn()
   version: number;
 
+  // Timestamps and Lifecycle Dates
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -159,6 +168,23 @@ export class Document {
 
   @Column({ nullable: true, name: 'archived_at' })
   archivedAt?: Date;
+
+  // Audit and Tracking
+  @OneToMany(() => AuditLog, (auditLog) => auditLog.document)
+  auditLogs: AuditLog[];
+
+  @Column({ nullable: true, name: 'latest_audit_log_id' })
+  latestAuditLogId?: string;
+
+  // Additional Metadata
+  @Column({ type: 'jsonb', nullable: true })
+  metadata?: {
+    originalFileName?: string;
+    pageCount?: number;
+    category?: string;
+    customFields?: Record<string, any>;
+    verificationRequirements?: string[];
+  };
 
   @Column({ default: false, name: 'is_deleted' })
   isDeleted: boolean;
