@@ -71,9 +71,11 @@
     "pg-hstore": "^2.3.4",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "speakeasy": "^2.0.0",
     "swagger-ui-express": "^5.0.0",
     "twilio": "^5.3.3",
     "typeorm": "^0.3.20",
+    "uuid": "^11.0.2",
     "winston": "^3.13.0"
   },
   "devDependencies": {
@@ -91,6 +93,7 @@
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
     "@types/aws-sdk": "^2.7.0",
+    "@types/bcrypt": "^5.0.2",
     "@types/bull": "^4.10.0",
     "@types/chai": "^5.0.0",
     "@types/express": "^5.0.0",
