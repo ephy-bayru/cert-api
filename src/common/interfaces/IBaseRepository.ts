@@ -20,7 +20,7 @@ export interface IBaseRepository<T extends IBaseEntity> {
   findAll(
     paginationOptions: PaginationOptions<T>,
   ): Promise<PaginationResult<T>>;
-  create(entity: DeepPartial<T>, options?: SaveOptions): Promise<T>;
+  create(entity: DeepPartial<T>): T;
   update(
     criteria: string | FindOptionsWhere<T>,
     partialEntity: QueryDeepPartialEntity<T>,
