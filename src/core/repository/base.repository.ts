@@ -96,12 +96,22 @@ export class BaseRepository<T extends IBaseEntity>
     }
   }
 
-  async create(entity: DeepPartial<T>, options?: SaveOptions): Promise<T> {
+  create(entity: DeepPartial<T>): T {
     try {
-      const newEntity = this.repository.create(entity);
-      return await this.repository.save(newEntity, options);
+      return this.repository.create(entity);
     } catch (error) {
       this.handleError('Error creating entity', error, { entity });
+    }
+  }
+
+  /**
+   * Adds a save method to the repository.
+   */
+  public async save(entity: T, options?: SaveOptions): Promise<T> {
+    try {
+      return await this.repository.save(entity, options);
+    } catch (error) {
+      this.handleError('Error saving entity', error, { entity });
     }
   }
 
