@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Status Update</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: #F39C12;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .content {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .status-info {
+            background-color: #fff5e6;
+            border: 1px solid #ffe0b2;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+
+        .status {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #F39C12;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #F39C12;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Document Status Update</h1>
+    </div>
+    <div class="content">
+        <h2>Hello {{username}},</h2>
+        <p>We're writing to inform you about an update to the status of your document in our verification system.</p>
+        <div class="status-info">
+            <h3>Document Details:</h3>
+            <p><strong>Document Title:</strong> {{documentTitle}}</p>
+            <p><strong>New Status:</strong> <span class="status">{{newStatus}}</span></p>
+            <p><strong>Updated On:</strong> {{updateDate}}</p>
+            <p><strong>Updated By:</strong> {{updatedBy}}</p>
+        </div>
+        <p>{{statusMessage}}</p>
+        <p>To view more details about your document and its verification status, please click the button below:</p>
+        <p style="text-align: center;">
+            <a href="{{documentLink}}" class="button">View Document Details</a>
+        </p>
+        <p>If you're having trouble with the button above, you can also copy and paste the following link into your
+            browser:</p>
+        <p>{{documentLink}}</p>
+        <p>If you have any questions or concerns regarding this status update, please don't hesitate to contact our
+            support team.</p>
+    </div>
+    <div class="footer">
+        <p>&copy; 2024 Document Verification System. All rights reserved.</p>
+        <p>This is an automated message. Please do not reply directly to this email.</p>
+    </div>
+</body>
+
+</html>

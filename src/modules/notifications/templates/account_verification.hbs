@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Account</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: #4A90E2;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .content {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4A90E2;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Welcome to Our Document Verification System</h1>
+    </div>
+    <div class="content">
+        <h2>Hello {{username}},</h2>
+        <p>Thank you for creating an account with us. We're excited to have you on board!</p>
+        <p>To ensure the security of your account and to start using our services, please verify your email address by
+            clicking the button below:</p>
+        <p style="text-align: center;">
+            <a href="{{verificationLink}}" class="button">Verify My Account</a>
+        </p>
+        <p>If you're having trouble with the button above, you can also copy and paste the following link into your
+            browser:</p>
+        <p>{{verificationLink}}</p>
+        <p>This link will expire in 24 hours for security reasons. If you need a new verification link, please log in to
+            your account and request a new one.</p>
+        <p>If you didn't create an account with us, please ignore this email or contact our support team if you have any
+            concerns.</p>
+    </div>
+    <div class="footer">
+        <p>&copy; 2024 Document Verification System. All rights reserved.</p>
+        <p>This is an automated message, please do not reply directly to this email.</p>
+    </div>
+</body>
+
+</html>

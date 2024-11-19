@@ -1,4 +1,4 @@
-import { FindManyOptions } from 'typeorm';
+import { FindOptionsOrder, FindOptionsWhere } from 'typeorm';
 import { IBaseEntity } from './IBaseEntity';
 
 export interface SortOption<T> {
@@ -7,10 +7,15 @@ export interface SortOption<T> {
 }
 
 export interface PaginationOptions<T extends IBaseEntity> {
-  options?: FindManyOptions<T>;
+  options: {
+    where: FindOptionsWhere<T>;
+    order?: FindOptionsOrder<T>;
+    [key: string]: any;
+  };
   page?: number;
   limit?: number;
   sort?: SortOption<T>[];
+  search?: string;
 }
 
 export interface PaginationResult<T> {

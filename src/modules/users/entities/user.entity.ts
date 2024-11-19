@@ -9,28 +9,34 @@ import {
   Index,
   DeleteDateColumn,
   ManyToMany,
-  JoinTable,
   Unique,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { LoginHistory } from './login-history.entity';
 import { Address } from './address.entity';
-import { Exclude } from 'class-transformer';
-import { UserRole } from './user-role.entity';
-import { ProviderType } from '../enums/provider-types';
-import { UserPreferences } from './user-preference.entity';
-import { UserStatus } from './user-status.entity';
-import { Organization } from '@modules/organizations/entities/organization.entity';
 import { Document } from '@modules/documents/entities/document.entity';
 import { Verification } from '@modules/verifications/entities/verification.entity';
 import { Notification } from '@modules/notifications/entities/notification.entity';
 import { AuditLog } from '@modules/audit/entities/audit-log.entity';
+import { UserPreferences } from './user-preference.entity';
+import { ProviderType } from '../enums/provider-types';
+import { UserStatus } from './user-status.entity';
+import { UserRole } from './user-role.entity';
 
+/**
+ * User Entity represents individual users who can:
+ * - Upload and manage their documents
+ * - Submit documents for verification to organizations
+ * - Track verification status
+ * - Grant access to their documents
+ */
 @Entity('users')
 @Unique(['email', 'userName', 'fcn', 'fin'])
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  // Basic user identification and authentication
   @Index()
   @Column({ unique: true, length: 150 })
   email: string;
@@ -39,6 +45,8 @@ export class User {
   @Exclude({ toPlainOnly: true })
   password: string;
 
+  // Personal Information
+  // These fields are essential for document verification
   @Column({ nullable: true, length: 100 })
   firstName?: string;
 
@@ -52,36 +60,18 @@ export class User {
   @Column({ unique: true, nullable: true, length: 100 })
   userName?: string;
 
-  @Column({ nullable: true, length: 10 })
-  gender?: string;
-
-  @Column({ type: 'date', nullable: true })
-  dateOfBirth?: Date;
-
-  @Column({ nullable: true, length: 100 })
-  nationality?: string;
-
-  @Column({ nullable: true, length: 10 })
-  sex?: string;
-
+  // Important identification fields for document verification
   @Index()
   @Column({ nullable: true, unique: true, length: 20 })
   phoneNumber?: string;
 
   @Column({ nullable: true, unique: true, length: 16 })
-  fcn?: string;
+  fcn?: string; // National ID number
 
   @Column({ nullable: true, unique: true, length: 12 })
-  fin?: string;
+  fin?: string; // Tax ID number
 
-  @Index()
-  @Column({
-    type: 'enum',
-    enum: UserRole,
-    default: UserRole.USER,
-  })
-  role: UserRole;
-
+  // Authentication and security
   @Column({
     type: 'enum',
     enum: ProviderType,
@@ -92,6 +82,14 @@ export class User {
   @Column({ default: false })
   isVerified: boolean;
 
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER,
+  })
+  role: UserRole;
+
+  // Two-factor authentication
   @Column({ default: false })
   twoFactorEnabled: boolean;
 
@@ -99,6 +97,7 @@ export class User {
   @Exclude({ toPlainOnly: true })
   twoFactorSecret?: string;
 
+  // Security tokens
   @Column({ nullable: true, select: false })
   @Exclude({ toPlainOnly: true })
   resetPasswordToken?: string;
@@ -110,17 +109,16 @@ export class User {
   @Exclude({ toPlainOnly: true })
   emailVerificationToken?: string;
 
-  @Column({ nullable: true })
-  profileImageUrl?: string;
-
+  // User preferences and settings
   @OneToOne(() => UserPreferences, (preferences) => preferences.user, {
     cascade: true,
   })
   preferences: UserPreferences;
 
-  @Column({ type: 'timestamp', nullable: true })
-  termsAcceptedAt?: Date;
+  @OneToOne(() => Address, (address) => address.user, { cascade: true })
+  address: Address;
 
+  // Account status and security
   @Index()
   @Column({
     type: 'enum',
@@ -138,15 +136,38 @@ export class User {
   @Column({ default: false })
   isAccountLocked: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
-  consentGivenAt?: Date;
+  // Document Management
+  // Core functionality for document ownership and submission
+  @OneToMany(() => Document, (document) => document.owner)
+  ownedDocuments: Document[];
 
-  @OneToMany(() => LoginHistory, (history) => history.user, { lazy: true })
-  loginHistory: Promise<LoginHistory[]>;
+  @OneToMany(() => Document, (document) => document.uploader)
+  uploadedDocuments: Document[];
 
-  @OneToOne(() => Address, (address) => address.user, { cascade: true })
-  address: Address;
+  @ManyToMany(() => Document, (document) => document.usersWithAccess)
+  accessibleDocuments: Document[];
 
+  // Verification Management
+  // Track document verifications initiated by the user
+  @OneToMany(() => Verification, (verification) => verification.initiatedBy)
+  verificationRequests: Verification[];
+
+  // Blockchain Integration
+  @Column({ nullable: true, unique: true, length: 42 })
+  blockchainAddress?: string;
+
+  // Notifications
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
+
+  // Audit and tracking
+  @OneToMany(() => LoginHistory, (history) => history.user)
+  loginHistory: LoginHistory[];
+
+  @OneToMany(() => AuditLog, (auditLog) => auditLog.performedBy)
+  auditLogs: AuditLog[];
+
+  // Timestamps and metadata
   @DeleteDateColumn()
   deletedAt?: Date;
 
@@ -162,45 +183,14 @@ export class User {
   @Column({ nullable: true })
   updatedBy?: string;
 
+  // Localization
   @Column({ default: 'en' })
   locale: string;
 
-  @Column({ nullable: true, unique: true, length: 42 })
-  blockchainAddress?: string;
+  // Compliance and Terms
+  @Column({ type: 'timestamp', nullable: true })
+  termsAcceptedAt?: Date;
 
-  @OneToMany(() => Document, (document) => document.owner, { lazy: true })
-  documents: Promise<Document[]>;
-
-  @ManyToMany(() => Organization, (organization) => organization.users, {
-    lazy: true,
-  })
-  @JoinTable({
-    name: 'user_organizations',
-    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'organization_id', referencedColumnName: 'id' },
-  })
-  organizations: Promise<Organization[]>;
-
-  @ManyToMany(() => Organization, (organization) => organization.adminUsers, {
-    lazy: true,
-  })
-  adminOrganizations: Promise<Organization[]>;
-
-  @OneToMany(() => Verification, (verification) => verification.initiatedBy, {
-    lazy: true,
-  })
-  verifications: Promise<Verification[]>;
-
-  @OneToMany(() => Verification, (verification) => verification.reviewedBy, {
-    lazy: true,
-  })
-  verificationsReviewed: Promise<Verification[]>;
-
-  @OneToMany(() => Notification, (notification) => notification.user, {
-    lazy: true,
-  })
-  notifications: Promise<Notification[]>;
-
-  @OneToMany(() => AuditLog, (auditLog) => auditLog.performedBy)
-  auditLogs: AuditLog[];
+  @Column({ type: 'timestamp', nullable: true })
+  consentGivenAt?: Date;
 }

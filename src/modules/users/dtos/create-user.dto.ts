@@ -12,9 +12,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProviderType } from '../enums/provider-types';
-import { UserStatus } from '../entities/user-status.entity';
 import { AddressDto } from './address.dto';
-import { UserRole } from '../entities/user-role.entity';
 
 export class CreateUserDto {
   @IsString()
@@ -51,14 +49,6 @@ export class CreateUserDto {
   @IsOptional()
   @IsEnum(ProviderType)
   provider?: ProviderType;
-
-  @IsEnum(UserRole)
-  @IsOptional()
-  role?: UserRole;
-
-  @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
 
   @IsOptional()
   @IsDate()

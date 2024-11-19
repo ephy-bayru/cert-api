@@ -10,7 +10,6 @@ import {
   Length,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { UserRole } from '../entities/user-role.entity';
 import { UserStatus } from '../entities/user-status.entity';
 import { ProviderType } from '../enums/provider-types';
 
@@ -65,24 +64,6 @@ export class CreateUserDto {
   @IsOptional()
   @IsEnum(ProviderType)
   provider?: ProviderType;
-
-  @ApiPropertyOptional({
-    enum: UserRole,
-    example: UserRole.USER,
-    description: 'Role of the user',
-  })
-  @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
-
-  @ApiPropertyOptional({
-    enum: UserStatus,
-    example: UserStatus.ACTIVE,
-    description: 'Status of the user',
-  })
-  @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
 
   @ApiPropertyOptional({
     example: '1990-01-01',

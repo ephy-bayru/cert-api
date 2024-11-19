@@ -1,3 +1,4 @@
+// main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
@@ -12,72 +13,114 @@ import helmet from 'helmet';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { INestApplication, VersioningType } from '@nestjs/common';
 import * as fs from 'fs';
+import { Request, Response } from 'express';
 
+interface HttpsOptions {
+  key: Buffer;
+  cert: Buffer;
+}
+
+/**
+ * Configures the NestJS application with middleware, security settings, and Swagger.
+ */
 async function configureApp(
   app: INestApplication,
   configService: ConfigService,
   logger: LoggerService,
 ): Promise<void> {
-  app.useGlobalFilters(
-    new GlobalExceptionFilter(logger, app.get(ConfigService)),
-  );
+  // Apply global exception filter
+  app.useGlobalFilters(new GlobalExceptionFilter(logger, configService));
+
+  // Security middleware
   app.use(helmet());
   app.setGlobalPrefix('api');
   app.enableCors();
 
-  // API Versioning
+  // API versioning configuration
   app.enableVersioning({
     type: VersioningType.URI,
-    defaultVersion: configService.get<string>('API_DEFAULT_VERSION', 'v1'),
+    defaultVersion: configService.get<string>('API_DEFAULT_VERSION', '1'),
     prefix: 'v',
   });
 
-  // Swagger setup
+  // Swagger documentation setup
+  setupSwagger(app);
+
+  // Add root redirect to Swagger documentation
+  app.getHttpAdapter().get('/', (req: Request, res: Response) => {
+    res.redirect('/api/docs');
+  });
+
+  logger.log('App configuration completed successfully', 'ConfigureApp');
+}
+
+/**
+ * Sets up Swagger documentation for the application.
+ */
+function setupSwagger(app: INestApplication): void {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   const documentWithGlobalResponses = applySwaggerGlobalApiResponses(document);
-  const baseUrl =
-    process.env.BASE_URL ||
-    `http://localhost:${configService.get('PORT', 3000)}`;
+
   SwaggerModule.setup('api/docs', app, documentWithGlobalResponses, {
     ...swaggerCustomOptions,
     swaggerOptions: {
       ...swaggerCustomOptions.swaggerOptions,
-      baseUrl,
     },
   });
-
-  logger.log('ConfigureApp', 'App configuration completed.');
 }
 
-function getHttpsOptions() {
-  if (process.env.USE_HTTPS !== 'true') {
-    return null;
+/**
+ * Gets HTTPS options if SSL is enabled.
+ */
+function getHttpsOptions(
+  configService: ConfigService,
+): HttpsOptions | undefined {
+  const useHttps = configService.get<string>('USE_HTTPS') === 'true';
+
+  if (!useHttps) {
+    return undefined;
   }
-  return {
-    key: fs.readFileSync(process.env.SSL_KEY_PATH),
-    cert: fs.readFileSync(process.env.SSL_CERT_PATH),
-  };
+
+  try {
+    const keyPath = configService.get<string>('SSL_KEY_PATH');
+    const certPath = configService.get<string>('SSL_CERT_PATH');
+
+    if (!keyPath || !certPath) {
+      throw new Error('SSL paths not properly configured');
+    }
+
+    return {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    };
+  } catch (error) {
+    console.error('Failed to load SSL certificates:', error);
+    process.exit(1);
+  }
 }
 
-function setupShutdownHandlers(app: INestApplication, logger: LoggerService) {
-  const shutdown = async (signal: string) => {
-    logger.log(`Application is shutting down (${signal})`, 'Bootstrap');
-    await app.close();
-    process.exit(0);
-  };
+/**
+ * Bootstraps the NestJS application.
+ */
+async function bootstrap(): Promise<void> {
+  // Create a minimal app context to retrieve ConfigService
+  const appContext = await NestFactory.createApplicationContext(AppModule, {
+    logger: false, // Disable logging for the context creation
+  });
+  const configService = appContext.get(ConfigService);
 
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-}
+  // Apply HTTPS options if SSL is enabled
+  const httpsOptions = getHttpsOptions(configService);
 
-async function bootstrap() {
+  // Close the app context as it's no longer needed
+  await appContext.close();
+
+  // Create the main application with the httpsOptions
   const app = await NestFactory.create(AppModule, {
-    httpsOptions: getHttpsOptions(),
+    ...(httpsOptions ? { httpsOptions } : {}),
   });
 
-  const configService = app.get(ConfigService);
   const logger = app.get(LoggerService);
-
   app.useLogger(logger);
   app.enableShutdownHooks();
 
@@ -87,12 +130,16 @@ async function bootstrap() {
   const host = configService.get<string>('HOST', '0.0.0.0');
 
   await app.listen(port, host);
-  logger.log(`Application is running on: ${await app.getUrl()}`, 'Bootstrap');
-
-  setupShutdownHandlers(app, logger);
+  logger.log(`Application is running on: ${await app.getUrl()}`, 'Bootstrap', {
+    port,
+    host,
+  });
 }
 
-async function startApp() {
+/**
+ * Starts the application with error handling.
+ */
+async function startApp(): Promise<void> {
   try {
     await bootstrap();
   } catch (error) {
@@ -101,10 +148,9 @@ async function startApp() {
   }
 }
 
-// Only start the app if this file is being run directly
+// Start app only if running directly
 if (require.main === module) {
   startApp();
 }
 
-// Export functions for potential use in tests or other modules
 export { startApp, bootstrap, configureApp };

@@ -7,11 +7,14 @@ import {
   IsObject,
 } from 'class-validator';
 import { NotificationPriority } from '../enums/notification-priority.enum';
-import { NotificationType } from '../entities/notification-type.enum';
+import { NotificationContentType, NotificationType } from '../entities/notification-type.enum';
 
 export class CreateNotificationDto {
   @IsEnum(NotificationType)
   type: NotificationType;
+
+  @IsEnum(NotificationContentType)
+  contentType: NotificationContentType;
 
   @IsString()
   message: string;

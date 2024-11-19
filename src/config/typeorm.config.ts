@@ -1,8 +1,8 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { LoggerOptions } from 'typeorm';
 import { DatabaseLoggerService } from 'src/core/services/database-logger.service';
 import { LoggerService } from 'src/common/services/logger.service';
+import * as path from 'path';
 
 export const typeormConfig = (
   configService: ConfigService,
@@ -11,11 +11,11 @@ export const typeormConfig = (
 ): TypeOrmModuleOptions => {
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
-  // Determine whether SSL is required or not
+  // SSL Configuration
   const sslEnabled = configService.get<boolean>('DB_SSL', false);
   const sslOptions = sslEnabled ? { rejectUnauthorized: false } : false;
 
-  // Ensure mandatory configuration is present
+  // Required Configuration Check
   const requiredConfig = ['DB_HOST', 'DB_USERNAME', 'DB_PASSWORD', 'DB_NAME'];
   for (const key of requiredConfig) {
     if (!configService.get<string>(key)) {
@@ -28,32 +28,28 @@ export const typeormConfig = (
     }
   }
 
-  // Update entity and migration paths based on the environment
-  const entities = isProduction
-    ? [__dirname + '/../../**/*.entity{.js,.ts}']
-    : [__dirname + '/../**/*.entity{.ts,.js}'];
-
-  const migrations = isProduction
-    ? [__dirname + '/../../migrations/*{.js,.ts}']
-    : [__dirname + '/../migrations/*{.ts,.js}'];
-
-  // Fetch logging level or options from environment or use custom logger service
-  const loggingOptions: LoggerOptions | 'all' =
+  // Database Logging Configuration
+  const loggingOptions =
     databaseLoggerService.determineDatabaseLoggingOptions();
 
   const dbHost = configService.get<string>('DB_HOST');
   logger.log(`Attempting to connect to database at ${dbHost}`, 'TypeOrmConfig');
 
-  logger.log('TypeORM configuration initialized', 'TypeOrmConfig', {
-    isProduction,
-    sslEnabled,
-    entities,
-    migrations,
-    loggingOptions,
-    dbHost,
-  });
+  // Use glob patterns to load entities
+  const entities = [
+    path.resolve(
+      __dirname,
+      '..',
+      'modules',
+      '**',
+      'entities',
+      '*.entity.{ts,js}',
+    ),
+  ];
 
-  return {
+  const migrations = [path.resolve(__dirname, '..', 'migrations', '*.{ts,js}')];
+
+  const config: TypeOrmModuleOptions = {
     type: 'postgres',
     host: dbHost,
     port: configService.get<number>('DB_PORT', 5432),
@@ -61,19 +57,42 @@ export const typeormConfig = (
     password: configService.get<string>('DB_PASSWORD'),
     database: configService.get<string>('DB_NAME'),
     entities,
-    autoLoadEntities: true,
-    synchronize: configService.get<boolean>('TYPEORM_SYNC', !isProduction),
-    migrationsRun: configService.get<boolean>('TYPEORM_MIGRATIONS_RUN', true),
     migrations,
-    logging: loggingOptions,
+    autoLoadEntities: true,
+    synchronize: !isProduction,
     ssl: sslOptions,
+    logging: loggingOptions,
+    retryAttempts: 5,
+    retryDelay: 3000,
+    maxQueryExecutionTime: configService.get<number>('DB_QUERY_TIMEOUT', 5000),
+    poolSize: configService.get<number>('DB_POOL_SIZE', 10),
     extra: {
+      max: configService.get<number>('DB_POOL_MAX', 20),
       connectionTimeoutMillis: configService.get<number>(
         'DB_CONNECTION_TIMEOUT',
         30000,
       ),
     },
-    retryAttempts: 5,
-    retryDelay: 3000,
   };
+
+  // Log Configuration Details
+  logger.log('TypeORM configuration initialized', 'TypeOrmConfig', {
+    isProduction,
+    sslEnabled,
+    dbHost,
+    loggingEnabled: !!loggingOptions,
+    loggingOptions: loggingOptions === 'all' ? 'all' : loggingOptions,
+    entities,
+  });
+
+  // Log full configuration in development
+  if (!isProduction) {
+    logger.debug('Detailed TypeORM configuration', 'TypeOrmConfig', {
+      ...config,
+      password: '[REDACTED]', // Hide sensitive info
+      entities,
+    });
+  }
+
+  return config;
 };

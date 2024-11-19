@@ -14,6 +14,7 @@ import {
   UseInterceptors,
   ParseUUIDPipe,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { UsersService } from '../services/users.service';
@@ -32,12 +33,13 @@ import {
   SearchUsersDocs,
   UpdateUserStatusDocs,
 } from '../documentation/users.controller.documentation';
-import { UserRole } from '../entities/user-role.entity';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { PaginationOptions } from 'src/common/interfaces/IPagination';
 import { UserStatus } from '../entities/user-status.entity';
 import { User } from '../entities/user.entity';
 import { GlobalExceptionFilter } from 'src/common/filters/global-exception.filter';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { UserRole } from '../entities/user-role.entity';
 
 @ApiTags('Users')
 @Controller({ path: 'users', version: '1' })
@@ -57,8 +59,8 @@ export class UsersController {
   // @UseGuards(JwtAuthGuard)
   @FindAllPaginatedDocs()
   async findAllPaginated(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
     @Query('status') status?: UserStatus,
   ) {
     const paginationOptions: PaginationOptions<User> = { page, limit };
@@ -69,7 +71,6 @@ export class UsersController {
   }
 
   @Post()
-  // @UseGuards(JwtAuthGuard)
   @CreateUserDocs()
   @HttpCode(HttpStatus.CREATED)
   async createUser(
@@ -84,9 +85,8 @@ export class UsersController {
   async updateUser(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
-    @Req() req: any,
+    @CurrentUser() currentUser: User,
   ) {
-    const currentUser = req.user;
     return this.usersService.updateUser(id, updateUserDto, currentUser);
   }
 
@@ -100,14 +100,13 @@ export class UsersController {
 
   @Patch(':id/status')
   // @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  // @Roles(UserRole.ADMIN)
   @UpdateUserStatusDocs()
   async updateUserStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('status') status: UserStatus,
-    @Req() req: any,
+    @CurrentUser() currentUser: User,
   ) {
-    const currentUser = req.user;
     return this.usersService.updateUserStatus(id, status, currentUser);
   }
 
@@ -116,9 +115,8 @@ export class UsersController {
   @DeactivateUserDocs()
   async deactivateUser(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: any,
+    @CurrentUser() currentUser: User,
   ) {
-    const currentUser = req.user;
     return this.usersService.deactivateUser(id, currentUser);
   }
 
@@ -126,8 +124,10 @@ export class UsersController {
   // @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ActivateUserDocs()
-  async activateUser(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    const currentUser = req.user;
+  async activateUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() currentUser: User,
+  ) {
     return this.usersService.activateUser(id, currentUser);
   }
 
@@ -136,8 +136,8 @@ export class UsersController {
   @SearchUsersDocs()
   async searchUsers(
     @Query('query') query: string,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
   ) {
     const paginationOptions: PaginationOptions<User> = { page, limit };
     return this.usersService.searchUsers(query, paginationOptions);
