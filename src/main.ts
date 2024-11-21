@@ -1,4 +1,3 @@
-// main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
@@ -72,18 +71,16 @@ function setupSwagger(app: INestApplication): void {
 /**
  * Gets HTTPS options if SSL is enabled.
  */
-function getHttpsOptions(
-  configService: ConfigService,
-): HttpsOptions | undefined {
-  const useHttps = configService.get<string>('USE_HTTPS') === 'true';
+function getHttpsOptions(): HttpsOptions | undefined {
+  const useHttps = process.env.USE_HTTPS === 'true';
 
   if (!useHttps) {
     return undefined;
   }
 
   try {
-    const keyPath = configService.get<string>('SSL_KEY_PATH');
-    const certPath = configService.get<string>('SSL_CERT_PATH');
+    const keyPath = process.env.SSL_KEY_PATH;
+    const certPath = process.env.SSL_CERT_PATH;
 
     if (!keyPath || !certPath) {
       throw new Error('SSL paths not properly configured');
@@ -103,23 +100,15 @@ function getHttpsOptions(
  * Bootstraps the NestJS application.
  */
 async function bootstrap(): Promise<void> {
-  // Create a minimal app context to retrieve ConfigService
-  const appContext = await NestFactory.createApplicationContext(AppModule, {
-    logger: false, // Disable logging for the context creation
-  });
-  const configService = appContext.get(ConfigService);
-
   // Apply HTTPS options if SSL is enabled
-  const httpsOptions = getHttpsOptions(configService);
-
-  // Close the app context as it's no longer needed
-  await appContext.close();
+  const httpsOptions = getHttpsOptions();
 
   // Create the main application with the httpsOptions
   const app = await NestFactory.create(AppModule, {
     ...(httpsOptions ? { httpsOptions } : {}),
   });
 
+  const configService = app.get(ConfigService);
   const logger = app.get(LoggerService);
   app.useLogger(logger);
   app.enableShutdownHooks();
