@@ -13,6 +13,7 @@ import { AuditModule } from '@modules/audit/audit.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { OrganizationsModule } from '@modules/organizations/organizations.module';
+import { AdminModule } from '@modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { OrganizationsModule } from '@modules/organizations/organizations.module
     // Feature Modules
     UsersModule,
     OrganizationsModule,
+    AdminModule,
     DocumentsModule,
 
     // Supporting Modules

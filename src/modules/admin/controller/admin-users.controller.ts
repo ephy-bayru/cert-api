@@ -41,8 +41,39 @@ import { User } from '@modules/users/entities/user.entity';
 import { CreateUserDto } from '@modules/users/dtos/create-user.dto';
 import { UpdateUserDto } from '@modules/users/dtos/update-user.dto';
 import { FindOptionsWhere, ILike } from 'typeorm';
+import {
+  ListAdminUsersDocs,
+  CreateAdminUserDocs,
+  UpdateAdminUserDocs,
+  DeleteAdminUserDocs,
+  ActivateAdminUserDocs,
+  DeactivateAdminUserDocs,
+  LockAdminUserAccountDocs,
+  UnlockAdminUserAccountDocs,
+  FindOrganizationByIdDocs,
+  ListOrganizationsDocs,
+  CreateOrganizationDocs,
+  UpdateOrganizationDocs,
+  DeleteOrganizationDocs,
+  ApproveOrganizationDocs,
+  SuspendOrganizationDocs,
+  ArchiveOrganizationDocs,
+  FindUserByIdDocs,
+  ListUsersDocs,
+  CreateUserDocs,
+  UpdateUserDocs,
+  DeleteUserDocs,
+  ActivateUserDocs,
+  DeactivateUserDocs,
+  LockUserAccountDocs,
+  UnlockUserAccountDocs,
+} from '../documentation/admin-users.controller.documentation';
+import { ApiGlobalResponses } from '@common/utils/api-global-responses.decorator';
+import { ApiTags } from '@nestjs/swagger';
 
-@Controller('admin')
+@ApiTags('Admin')
+@Controller({ path: 'admin', version: '1' })
+@ApiGlobalResponses()
 @UseFilters(GlobalExceptionFilter)
 @UseInterceptors(TransformInterceptor)
 // @UseGuards(RolesGuard)
@@ -55,7 +86,9 @@ export class AdminUsersController {
   ) {}
 
   // Admin User Management
+
   @Get('admin-users')
+  @ListAdminUsersDocs()
   async listAdminUsers(
     @Query('page') page = 1,
     @Query('limit') limit = 10,
@@ -67,7 +100,8 @@ export class AdminUsersController {
       whereOptions.firstName = ILike(`%${search}%`);
       // If searching multiple fields:
       // whereOptions = [
-      //   { name: ILike(`%${search}%`) },
+      //   { firstName: ILike(`%${search}%`) },
+      //   { lastName: ILike(`%${search}%`) },
       //   { email: ILike(`%${search}%`) },
       // ];
     }
@@ -84,6 +118,7 @@ export class AdminUsersController {
   }
 
   @Post('admin-users')
+  @CreateAdminUserDocs()
   @HttpCode(HttpStatus.CREATED)
   async createAdminUser(
     @Body() createAdminUserDto: CreateAdminUserDto,
@@ -97,6 +132,7 @@ export class AdminUsersController {
   }
 
   @Put('admin-users/:id')
+  @UpdateAdminUserDocs()
   async updateAdminUser(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateAdminUserDto: UpdateAdminUserDto,
@@ -111,6 +147,7 @@ export class AdminUsersController {
   }
 
   @Delete('admin-users/:id')
+  @DeleteAdminUserDocs()
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAdminUser(
     @Param('id', ParseUUIDPipe) id: string,
@@ -121,6 +158,7 @@ export class AdminUsersController {
   }
 
   @Patch('admin-users/:id/activate')
+  @ActivateAdminUserDocs()
   async activateAdminUser(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: AdminUser,
@@ -130,6 +168,7 @@ export class AdminUsersController {
   }
 
   @Patch('admin-users/:id/deactivate')
+  @DeactivateAdminUserDocs()
   async deactivateAdminUser(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: AdminUser,
@@ -139,6 +178,7 @@ export class AdminUsersController {
   }
 
   @Patch('admin-users/:id/lock')
+  @LockAdminUserAccountDocs()
   async lockAdminUserAccount(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<void> {
@@ -146,6 +186,7 @@ export class AdminUsersController {
   }
 
   @Patch('admin-users/:id/unlock')
+  @UnlockAdminUserAccountDocs()
   async unlockAdminUserAccount(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: AdminUser,
@@ -157,6 +198,7 @@ export class AdminUsersController {
   // Organization Management
 
   @Get('organizations/:id')
+  @FindOrganizationByIdDocs()
   async findOrganizationById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<OrganizationResponseDto> {
@@ -164,6 +206,7 @@ export class AdminUsersController {
   }
 
   @Get('organizations')
+  @ListOrganizationsDocs()
   async listOrganizations(
     @Query('page') page = 1,
     @Query('limit') limit = 10,
@@ -193,6 +236,7 @@ export class AdminUsersController {
   }
 
   @Post('organizations')
+  @CreateOrganizationDocs()
   @HttpCode(HttpStatus.CREATED)
   async createOrganization(
     @Body() createOrganizationDto: CreateOrganizationDto,
@@ -206,6 +250,7 @@ export class AdminUsersController {
   }
 
   @Put('organizations/:id')
+  @UpdateOrganizationDocs()
   async updateOrganization(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateOrganizationDto: UpdateOrganizationDto,
@@ -220,6 +265,7 @@ export class AdminUsersController {
   }
 
   @Delete('organizations/:id')
+  @DeleteOrganizationDocs()
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteOrganization(
     @Param('id', ParseUUIDPipe) id: string,
@@ -232,6 +278,7 @@ export class AdminUsersController {
   }
 
   @Patch('organizations/:id/approve')
+  @ApproveOrganizationDocs()
   async approveOrganization(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: AdminUser,
@@ -244,6 +291,7 @@ export class AdminUsersController {
   }
 
   @Patch('organizations/:id/suspend')
+  @SuspendOrganizationDocs()
   async suspendOrganization(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('reason') reason: string,
@@ -258,6 +306,7 @@ export class AdminUsersController {
   }
 
   @Patch('organizations/:id/archive')
+  @ArchiveOrganizationDocs()
   async archiveOrganization(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: AdminUser,
@@ -272,6 +321,7 @@ export class AdminUsersController {
   // User Management
 
   @Get('users/:id')
+  @FindUserByIdDocs()
   async findUserById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<UserResponseDto> {
@@ -279,6 +329,7 @@ export class AdminUsersController {
   }
 
   @Get('users')
+  @ListUsersDocs()
   async listUsers(
     @Query('page') page = 1,
     @Query('limit') limit = 10,
@@ -304,6 +355,7 @@ export class AdminUsersController {
   }
 
   @Post('users')
+  @CreateUserDocs()
   @HttpCode(HttpStatus.CREATED)
   async createUser(
     @Body() createUserDto: CreateUserDto,
@@ -317,6 +369,7 @@ export class AdminUsersController {
   }
 
   @Put('users/:id')
+  @UpdateUserDocs()
   async updateUser(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -331,6 +384,7 @@ export class AdminUsersController {
   }
 
   @Delete('users/:id')
+  @DeleteUserDocs()
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteUser(
     @Param('id', ParseUUIDPipe) id: string,
@@ -340,6 +394,7 @@ export class AdminUsersController {
   }
 
   @Patch('users/:id/activate')
+  @ActivateUserDocs()
   async activateUser(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: AdminUser,
@@ -348,6 +403,7 @@ export class AdminUsersController {
   }
 
   @Patch('users/:id/deactivate')
+  @DeactivateUserDocs()
   async deactivateUser(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: AdminUser,
@@ -356,11 +412,13 @@ export class AdminUsersController {
   }
 
   @Patch('users/:id/lock')
+  @LockUserAccountDocs()
   async lockUserAccount(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.userManagementService.lockUserAccount(id);
   }
 
   @Patch('users/:id/unlock')
+  @UnlockUserAccountDocs()
   async unlockUserAccount(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<void> {
