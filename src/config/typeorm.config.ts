@@ -59,7 +59,7 @@ export const typeormConfig = (
     entities,
     migrations,
     autoLoadEntities: true,
-    synchronize: !isProduction,
+    synchronize: false,
     ssl: sslOptions,
     logging: loggingOptions,
     retryAttempts: 5,

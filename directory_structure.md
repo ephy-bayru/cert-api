@@ -1,5 +1,4 @@
 cert-api/
-    |-- .DS_Store
     |-- .env
     |-- .eslintrc.js
     |-- .gitignore
@@ -8,9 +7,24 @@ cert-api/
         |-- settings.json
     |-- README.md
     |-- directory_structure.md
+    |-- hardhat.config.ts
     |-- list_project_structure.py
     |-- logs/
         |-- app-2024-10-09.log
+        |-- app-2024-10-10.log
+        |-- app-2024-10-14.log
+        |-- app-2024-10-16.log
+        |-- app-2024-10-23.log
+        |-- app-2024-10-26.log
+        |-- app-2024-10-29.log
+        |-- app-2024-11-01.log
+        |-- app-2024-11-02.log
+        |-- app-2024-11-13.log
+        |-- app-2024-11-14.log
+        |-- app-2024-11-17.log
+        |-- app-2024-11-18.log
+        |-- app-2024-11-19.log
+        |-- app-2024-11-21.log
     |-- nest-cli.json
     |-- package.json
     |-- src/
@@ -35,6 +49,7 @@ cert-api/
         |-- common/
             |-- common.module.ts
             |-- decorators/
+                |-- current-user.decorator.ts
                 |-- public.decorator.ts
                 |-- response-message.decorator.ts
                 |-- roles.decorator.ts
@@ -73,6 +88,7 @@ cert-api/
                 |-- database-logger.service.ts
         |-- main.ts
         |-- modules/
+            |-- admin/
             |-- audit/
                 |-- audit.module.ts
                 |-- controllers/
@@ -97,6 +113,7 @@ cert-api/
                 |-- auth.controller.ts
                 |-- auth.module.ts
                 |-- auth.service.ts
+                |-- controller/
                 |-- dto/
                     |-- auth-response.dto.ts
                     |-- login.dto.ts
@@ -105,24 +122,33 @@ cert-api/
                     |-- jwt-auth.guard.ts
                 |-- interfaces/
                     |-- jwt-payload.interface.ts
+                |-- repository/
+                    |-- auth.repository.ts
+                |-- services/
                 |-- strategies/
                     |-- jwt.strategy.ts
             |-- documents/
                 |-- controllers/
                     |-- documents.controller.ts
                 |-- documentation/
-                    |-- document.dto.documentation.ts
+                    |-- create-document.dto.documentation.ts
+                    |-- document-response.dto.documentation.ts
                     |-- documents.controller.documentation.ts
+                    |-- update-document.dto.documentation.ts
+                    |-- upload-document.dto.documentation.ts
                 |-- documents.module.ts
                 |-- dtos/
+                    |-- create-document.dto.ts
                     |-- document-response.dto.ts
                     |-- update-document.dto.ts
                     |-- upload-document.dto.ts
                 |-- entities/
+                    |-- document-access-level.enum.ts
                     |-- document-status.enum.ts
+                    |-- document-type.enum.ts
                     |-- document.entity.ts
                 |-- interfaces/
-                    |-- document.interface.ts
+                    |-- document-filters.interface.ts
                 |-- repository/
                     |-- documents.repository.ts
                 |-- services/
@@ -148,6 +174,7 @@ cert-api/
                 |-- dtos/
                     |-- create-notification.dto.ts
                     |-- notification-response.dto.ts
+                    |-- notification.dto.ts
                     |-- update-notification.dto.ts
                 |-- entities/
                     |-- notification-status.enum.ts
@@ -157,35 +184,84 @@ cert-api/
                     |-- notification-priority.enum.ts
                 |-- interfaces/
                     |-- notification.interface.ts
+                |-- notifications.dispatcher.ts
+                |-- notifications.factory.ts
+                |-- notifications.handler.ts
                 |-- notifications.module.ts
                 |-- repository/
                     |-- notifications.repository.ts
                 |-- services/
+                    |-- email-template.service.ts
+                    |-- email.service.ts
+                    |-- notifications-strategy.service.ts
                     |-- notifications.service.ts
+                    |-- push-notifications.service.ts
+                    |-- sms.service.ts
+                |-- templates/
+                    |-- account_verification.hbs
+                    |-- admin_new_organization_notification.hbs
+                    |-- admin_new_user_notification.hbs
+                    |-- document_status_update.hbs
+                    |-- document_submission_notification.hbs
+                    |-- password_reset.hbs
                 |-- validations/
                     |-- notification.validation.ts
             |-- organizations/
+                |-- constants/
+                    |-- query-constants.ts
                 |-- controllers/
                     |-- organizations.controller.ts
                 |-- documentation/
-                    |-- organization.dto.documentation.ts
+                    |-- create-organization.dto.documentation.ts
+                    |-- organization-operations.documentation.ts
+                    |-- organization-queries.documentation.ts
+                    |-- organization-response.dto.documentation.ts
+                    |-- organization-user.documentation.ts
                     |-- organizations.controller.documentation.ts
+                    |-- update-organization.dto.documentation.ts
                 |-- dtos/
+                    |-- archive-organization.dto.ts
+                    |-- batch-organization-user.dto.ts
+                    |-- create-organization-user.dto.ts
+                    |-- create-organization-with-admin.dto.ts
                     |-- create-organization.dto.ts
                     |-- organization-response.dto.ts
+                    |-- organization-user-permissions.dto.ts
+                    |-- organization-user-response.dto.ts
+                    |-- reason.dto.ts
+                    |-- suspend-organization.dto.ts
+                    |-- update-organization-user.dto.ts
                     |-- update-organization.dto.ts
                 |-- entities/
                     |-- organization-status.enum.ts
+                    |-- organization-user-role.enum.ts
+                    |-- organization-user.entity.ts
                     |-- organization.entity.ts
                 |-- interfaces/
                     |-- organization.interface.ts
                 |-- organizations.module.ts
                 |-- repository/
+                    |-- organization-users.repository.ts
                     |-- organizations.repository.ts
+                    |-- query-builders/
+                        |-- metadata.query-builders.ts
+                        |-- organization-user.query-builders.ts
+                        |-- organization.query-builders.ts
                 |-- services/
+                    |-- organization-users.service.ts
                     |-- organizations.service.ts
+                |-- types/
+                    |-- metadata.types.ts
+                    |-- organization-user.types.ts
+                    |-- organization.types.ts
                 |-- validations/
                     |-- organization.validation.ts
+            |-- settings/
+                |-- controller/
+                |-- dtos/
+                |-- repositories/
+                    |-- settings.repository.ts
+                |-- services/
             |-- users/
                 |-- controllers/
                     |-- users.controller.spec.ts
@@ -218,7 +294,6 @@ cert-api/
                 |-- repository/
                     |-- users-repository.ts
                 |-- services/
-                    |-- seed.service.ts
                     |-- users.service.ts
                 |-- users.module.ts
             |-- verifications/
