@@ -7,8 +7,8 @@ export interface SortOption<T> {
 }
 
 export interface PaginationOptions<T extends IBaseEntity> {
-  options: {
-    where: FindOptionsWhere<T>;
+  options?: {
+    where?: FindOptionsWhere<T> | FindOptionsWhere<T>[];
     order?: FindOptionsOrder<T>;
     [key: string]: any;
   };
