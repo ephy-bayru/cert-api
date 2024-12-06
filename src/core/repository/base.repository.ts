@@ -107,7 +107,7 @@ export class BaseRepository<T extends IBaseEntity>
   /**
    * Adds a save method to the repository.
    */
-  public async save(entity: T, options?: SaveOptions): Promise<T> {
+  protected async save(entity: T, options?: SaveOptions): Promise<T> {
     try {
       return await this.repository.save(entity, options);
     } catch (error) {
@@ -185,7 +185,7 @@ export class BaseRepository<T extends IBaseEntity>
     }
   }
 
-  async transaction<R>(
+  protected async transaction<R>(
     operation: (queryRunner: QueryRunner) => Promise<R>,
   ): Promise<R> {
     const queryRunner = this.dataSource.createQueryRunner();

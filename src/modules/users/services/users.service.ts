@@ -13,7 +13,6 @@ import { UserResponseDto } from '../dtos/user-response.dto';
 import { CreateUserDto } from '../dtos/create-user.dto';
 import { UserMapper } from '../dtos/user.mapper';
 import { ConfigService } from '@nestjs/config';
-import { ProviderType } from '../enums/provider-types';
 import { User } from '../entities/user.entity';
 import { LoggerService } from 'src/common/services/logger.service';
 import {
@@ -81,6 +80,7 @@ export class UsersService {
    */
   async createUser(createUserDto: CreateUserDto): Promise<UserResponseDto> {
     try {
+      // Ensure unique fields
       await this.checkUniqueFields(createUserDto);
 
       if (!createUserDto.password) {
@@ -88,14 +88,8 @@ export class UsersService {
       }
       createUserDto.password = await bcrypt.hash(createUserDto.password, 10);
 
-      // Force set role and status
-      const userEntity = this.usersRepository.create({
-        ...createUserDto,
-        role: UserRole.USER,
-        status: UserStatus.PENDING_ACTIVATION,
-      });
-
-      const newUser = await this.usersRepository.save(userEntity);
+      // Create user via repository method
+      const newUser = await this.usersRepository.createUser(createUserDto);
 
       this.logger.log('User created successfully', 'UsersService', {
         userId: newUser.id,
@@ -230,7 +224,7 @@ export class UsersService {
     id: string,
     currentUser: User,
   ): Promise<UserResponseDto> {
-    return this.updateUserStatus(id, UserStatus.DEACTIVATED, currentUser);
+    return this.updateUserStatus(id, UserStatus.INACTIVE, currentUser);
   }
 
   /**
@@ -262,34 +256,6 @@ export class UsersService {
   }
 
   /**
-   * Checks if an email is unique.
-   */
-  async isEmailUnique(email: string): Promise<boolean> {
-    return !(await this.usersRepository.emailExists(email));
-  }
-
-  /**
-   * Checks if a username is unique.
-   */
-  async isUserNameUnique(userName: string): Promise<boolean> {
-    return !(await this.usersRepository.userNameExists(userName));
-  }
-
-  /**
-   * Checks if an FCN is unique.
-   */
-  async isFcnUnique(fcn: string): Promise<boolean> {
-    return !(await this.usersRepository.fcnExists(fcn));
-  }
-
-  /**
-   * Checks if a FIN is unique.
-   */
-  async isFinUnique(fin: string): Promise<boolean> {
-    return !(await this.usersRepository.finExists(fin));
-  }
-
-  /**
    * Increments failed login attempts.
    */
   async incrementFailedLoginAttempts(id: string): Promise<void> {
@@ -300,42 +266,38 @@ export class UsersService {
   }
 
   /**
-   * Checks unique fields during user creation or update.
+   * Checks unique fields during user creation.
    */
-  private async checkUniqueFields(
-    userData: CreateUserDto | UpdateUserDto,
-  ): Promise<void> {
-    const uniqueFields: Array<'email' | 'userName' | 'fcn' | 'fin'> = [
+  private async checkUniqueFields(userData: CreateUserDto): Promise<void> {
+    const existingFields: string[] = [];
+
+    const fieldsToCheck: Array<keyof CreateUserDto> = [
       'email',
       'userName',
       'fcn',
       'fin',
     ];
-    const existingFields: string[] = [];
 
-    for (const field of uniqueFields) {
+    for (const field of fieldsToCheck) {
       const value = userData[field];
-      if (typeof value === 'string' && value) {
-        let isUnique: boolean;
-        switch (field) {
-          case 'email':
-            isUnique = await this.isEmailUnique(value);
-            break;
-          case 'userName':
-            isUnique = await this.isUserNameUnique(value);
-            break;
-          case 'fcn':
-            isUnique = await this.isFcnUnique(value);
-            break;
-          case 'fin':
-            isUnique = await this.isFinUnique(value);
-            break;
-          default:
-            isUnique = true;
-        }
-        if (!isUnique) {
+      if (value) {
+        const exists = await this.usersRepository.fieldExists(
+          field as string,
+          value,
+        );
+        if (exists) {
           existingFields.push(field);
         }
+      }
+    }
+
+    if (userData.address?.phoneNumber) {
+      const exists = await this.usersRepository.fieldExists(
+        'address.phoneNumber',
+        userData.address.phoneNumber,
+      );
+      if (exists) {
+        existingFields.push('phoneNumber');
       }
     }
 
@@ -353,41 +315,37 @@ export class UsersService {
     updateUserDto: UpdateUserDto,
     existingUser: User,
   ): Promise<void> {
-    const uniqueFields: Array<'email' | 'userName' | 'fcn' | 'fin'> = [
+    const existingFields: string[] = [];
+
+    // Define the fields that exist on both UpdateUserDto and User
+    const fieldsToCheck: Array<'email' | 'userName' | 'fcn' | 'fin'> = [
       'email',
       'userName',
       'fcn',
       'fin',
     ];
-    const existingFields: string[] = [];
 
-    for (const field of uniqueFields) {
+    for (const field of fieldsToCheck) {
       const newValue = updateUserDto[field];
-      const existingValue = existingUser[field];
-      if (
-        typeof newValue === 'string' &&
-        newValue &&
-        newValue !== existingValue
-      ) {
-        let isUnique: boolean;
-        switch (field) {
-          case 'email':
-            isUnique = await this.isEmailUnique(newValue);
-            break;
-          case 'userName':
-            isUnique = await this.isUserNameUnique(newValue);
-            break;
-          case 'fcn':
-            isUnique = await this.isFcnUnique(newValue);
-            break;
-          case 'fin':
-            isUnique = await this.isFinUnique(newValue);
-            break;
-          default:
-            isUnique = true;
-        }
-        if (!isUnique) {
+      const existingValue = existingUser[field as keyof User];
+      if (newValue && newValue !== existingValue) {
+        const exists = await this.usersRepository.fieldExists(field, newValue);
+        if (exists) {
           existingFields.push(field);
+        }
+      }
+    }
+
+    if (updateUserDto.address?.phoneNumber) {
+      const newPhoneNumber = updateUserDto.address.phoneNumber;
+      const existingPhoneNumber = existingUser.address?.phoneNumber;
+      if (newPhoneNumber && newPhoneNumber !== existingPhoneNumber) {
+        const exists = await this.usersRepository.fieldExists(
+          'address.phoneNumber',
+          newPhoneNumber,
+        );
+        if (exists) {
+          existingFields.push('phoneNumber');
         }
       }
     }
