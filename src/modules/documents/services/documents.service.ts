@@ -141,7 +141,7 @@ export class DocumentsService {
       for (const orgId of organizationIds) {
         await this.notificationService.createNotification({
           type: NotificationType.IN_APP,
-          contentType: NotificationContentType.VERIFICATION_REQUESTED,
+          contentType: NotificationContentType.DOCUMENT_VERIFICATION_REQUESTED,
           message: `New document "${document.title}" submitted for verification`,
           priority: NotificationPriority.HIGH,
           organizationId: orgId,
@@ -181,7 +181,7 @@ export class DocumentsService {
 
       await this.notificationService.createNotification({
         type: NotificationType.IN_APP,
-        contentType: NotificationContentType.DOCUMENT_STATUS_CHANGED,
+        contentType: NotificationContentType.DOCUMENT_STATUS_UPDATED,
         message: `Document "${document.title}" status changed to ${newStatus}`,
         priority: NotificationPriority.NORMAL,
         userId: document.ownerId,
@@ -238,7 +238,7 @@ export class DocumentsService {
 
       await this.notificationService.createNotification({
         type: NotificationType.IN_APP,
-        contentType: NotificationContentType.CUSTOM,
+        contentType: NotificationContentType.CUSTOM_NOTIFICATION,
         message: `You have been granted access to a document`,
         priority: NotificationPriority.NORMAL,
         organizationId: organizationId,
@@ -273,7 +273,7 @@ export class DocumentsService {
 
       await this.notificationService.createNotification({
         type: NotificationType.IN_APP,
-        contentType: NotificationContentType.CUSTOM,
+        contentType: NotificationContentType.CUSTOM_NOTIFICATION,
         message: `Your access to a document has been revoked`,
         priority: NotificationPriority.HIGH,
         organizationId: organizationId,
@@ -315,7 +315,7 @@ export class DocumentsService {
       for (const orgId of organizationIds) {
         await this.notificationService.createNotification({
           type: NotificationType.IN_APP,
-          contentType: NotificationContentType.VERIFICATION_REQUESTED,
+          contentType: NotificationContentType.DOCUMENT_VERIFICATION_REQUESTED,
           message: `Document "${document.title}" requires re-verification`,
           priority: NotificationPriority.HIGH,
           organizationId: orgId,
