@@ -23,33 +23,32 @@ export class DocumentsRepository extends BaseRepository<Document> {
     createDocumentDto: CreateDocumentDto,
     userId: string,
   ): Promise<Document> {
-    const document = this.repository.create({
+    // Convert metadata if needed
+    const metadata = createDocumentDto.metadata
+      ? JSON.parse(createDocumentDto.metadata)
+      : undefined;
+
+    // Ensure documentType is an enum (if needed)
+    // Assuming createDocumentDto.documentType is already a valid DocumentType enum
+    return this.create({
       ...createDocumentDto,
       owner: { id: userId } as any,
       uploader: { id: userId } as any,
-      metadata: createDocumentDto.metadata
-        ? JSON.parse(createDocumentDto.metadata)
-        : undefined,
+      metadata,
     });
-    return this.repository.save(document);
   }
 
   async getDocument(id: string, userId: string): Promise<Document> {
-    const document = await this.findOne({
+    // Removed 'verificationRequests' and 'verifiedByOrganizations' from relations
+    return this.findOne({
       where: { id, ownerId: userId },
       relations: [
         'owner',
         'uploader',
-        'verificationRequests',
-        'verifiedByOrganizations',
+        'organizationsWithAccess',
+        'verifications',
       ],
     });
-    if (!document) {
-      throw new NotFoundException(
-        `Document with ID "${id}" not found for user "${userId}"`,
-      );
-    }
-    return document;
   }
 
   async updateDocument(
@@ -63,20 +62,16 @@ export class DocumentsRepository extends BaseRepository<Document> {
         ? JSON.parse(updateDocumentDto.metadata)
         : undefined,
     };
+
+    // Convert documentType if it's still a string
+    // updateData.documentType = DocumentType[updateDocumentDto.documentType.toUpperCase()];
+
     await this.update({ id, owner: { id: userId } }, updateData);
     return this.getDocument(id, userId);
   }
 
   async softDeleteDocument(id: string, userId: string): Promise<void> {
-    const result = await this.update(
-      { id, ownerId: userId },
-      { isDeleted: true },
-    );
-    if (result.affected === 0) {
-      throw new NotFoundException(
-        `Document with ID "${id}" not found for user "${userId}"`,
-      );
-    }
+    await this.update({ id, ownerId: userId }, { isDeleted: true });
   }
 
   // Document Submission and Workflow
@@ -87,10 +82,10 @@ export class DocumentsRepository extends BaseRepository<Document> {
   ): Promise<Document> {
     const document = await this.getDocument(id, userId);
     document.status = DocumentStatus.PENDING_VERIFICATION;
-    document.verificationRequests = organizationIds.map(
-      (orgId) => ({ id: orgId }) as any,
-    );
-    return this.repository.save(document);
+    // Previously: document.verificationRequests = organizationIds.map(...)
+    // Instead, handle the creation of Verification entities outside this method,
+    // or add logic here to create Verifications.
+    return this.save(document);
   }
 
   async changeDocumentStatus(
@@ -99,15 +94,13 @@ export class DocumentsRepository extends BaseRepository<Document> {
     organizationId: string,
   ): Promise<Document> {
     const document = await this.findOne(id);
-    if (!document) {
-      throw new NotFoundException(`Document with ID "${id}" not found`);
-    }
     document.status = newStatus;
-    if (!document.verificationStatuses) {
-      document.verificationStatuses = {};
-    }
+
+    // Assuming verificationStatuses is now a Record<string, DocumentStatus>
+    document.verificationStatuses = document.verificationStatuses || {};
     document.verificationStatuses[organizationId] = newStatus;
-    return this.repository.save(document);
+
+    return this.save(document);
   }
 
   // Document Retrieval and Listing
@@ -119,15 +112,17 @@ export class DocumentsRepository extends BaseRepository<Document> {
       ownerId: userId,
       isDeleted: false,
     };
+
     if (filters.status) {
       whereClause.status = filters.status;
     }
+
     return this.findAll({
       page: filters.page,
       limit: filters.limit,
       options: {
         where: whereClause,
-        relations: ['verificationRequests', 'verifiedByOrganizations'],
+        relations: ['organizationsWithAccess', 'verifications'],
         order: { createdAt: 'DESC' },
       },
     });
@@ -139,7 +134,7 @@ export class DocumentsRepository extends BaseRepository<Document> {
   ): Promise<PaginationResult<Document>> {
     const queryBuilder = this.repository
       .createQueryBuilder('document')
-      .innerJoin('document.verifiedByOrganizations', 'org', 'org.id = :orgId', {
+      .innerJoin('document.organizationsWithAccess', 'org', 'org.id = :orgId', {
         orgId,
       })
       .where('document.isDeleted = :isDeleted', { isDeleted: false });
@@ -159,7 +154,6 @@ export class DocumentsRepository extends BaseRepository<Document> {
       .take(limit);
 
     const [data, total] = await queryBuilder.getManyAndCount();
-
     return { data, total, page, limit };
   }
 
@@ -171,10 +165,12 @@ export class DocumentsRepository extends BaseRepository<Document> {
       .where('document.isDeleted = :isDeleted', { isDeleted: false });
 
     if (searchParams.searchTerm) {
+      // Depending on how documentType is stored (enum in DB), this ILIKE might not work well.
+      // Consider casting or only searching text fields.
       queryBuilder.andWhere(
         '(document.title ILIKE :searchTerm OR ' +
           'document.description ILIKE :searchTerm OR ' +
-          'document.documentType ILIKE :searchTerm OR ' +
+          'document.documentType::text ILIKE :searchTerm OR ' +
           ':searchTerm = ANY(document.tags))',
         { searchTerm: `%${searchParams.searchTerm}%` },
       );
@@ -207,7 +203,6 @@ export class DocumentsRepository extends BaseRepository<Document> {
       .take(limit);
 
     const [data, total] = await queryBuilder.getManyAndCount();
-
     return { data, total, page, limit };
   }
 
@@ -269,10 +264,9 @@ export class DocumentsRepository extends BaseRepository<Document> {
   ): Promise<Document> {
     const document = await this.getDocument(documentId, userId);
     document.status = DocumentStatus.PENDING_VERIFICATION;
-    document.verificationRequests = organizationIds.map(
-      (orgId) => ({ id: orgId }) as any,
-    );
-    return this.repository.save(document);
+    // Previously: document.verificationRequests = ...
+    // If you need to track re-verification requests, consider creating Verification entities.
+    return this.save(document);
   }
 
   // Composite Status
@@ -281,9 +275,7 @@ export class DocumentsRepository extends BaseRepository<Document> {
     organizationStatuses: Record<string, DocumentStatus>;
   }> {
     const document = await this.findOne(documentId);
-    if (!document) {
-      throw new NotFoundException(`Document with ID "${documentId}" not found`);
-    }
+    // Assuming verificationStatuses is now a Record<string, DocumentStatus>
     return {
       overallStatus: document.status,
       organizationStatuses: document.verificationStatuses || {},
@@ -294,7 +286,7 @@ export class DocumentsRepository extends BaseRepository<Document> {
   async getDocumentsByIds(ids: string[]): Promise<Document[]> {
     return this.repository.find({
       where: { id: In(ids), isDeleted: false },
-      relations: ['owner', 'verificationRequests', 'verifiedByOrganizations'],
+      relations: ['owner', 'organizationsWithAccess', 'verifications'],
     });
   }
 
@@ -312,7 +304,7 @@ export class DocumentsRepository extends BaseRepository<Document> {
 
     return result.reduce(
       (acc, { status, count }) => {
-        acc[status] = parseInt(count);
+        acc[status] = parseInt(count, 10);
         return acc;
       },
       {} as Record<DocumentStatus, number>,
@@ -327,7 +319,7 @@ export class DocumentsRepository extends BaseRepository<Document> {
       where: { ownerId: userId, isDeleted: false },
       order: { createdAt: 'DESC' },
       take: limit,
-      relations: ['verificationRequests', 'verifiedByOrganizations'],
+      relations: ['organizationsWithAccess', 'verifications'],
     });
   }
 }

@@ -41,6 +41,7 @@ export const swaggerConfig = new DocumentBuilder()
   .addTag('Auth', 'Authentication and authorization endpoints')
   .addTag('Users', 'User account management endpoints')
   .addTag('Organizations', 'Organization management endpoints')
+  .addTag('Admin', 'System administration endpoints')
   .addTag(
     'Documents',
     'Document upload, management, and verification endpoints',
@@ -50,7 +51,6 @@ export const swaggerConfig = new DocumentBuilder()
     'Notifications',
     'Notification management for users and organizations',
   )
-  .addTag('Admin', 'System administration endpoints')
   .addTag('Health', 'API health check endpoints')
   .addTag(
     'Audit Logs',

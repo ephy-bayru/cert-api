@@ -1,9 +1,13 @@
+import { Injectable, ConflictException } from '@nestjs/common';
 import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import { DataSource, FindOptionsWhere, ILike, IsNull } from 'typeorm';
+  Brackets,
+  DataSource,
+  EntityManager,
+  FindOptionsWhere,
+  ILike,
+  IsNull,
+  QueryRunner,
+} from 'typeorm';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dtos/create-user.dto';
 import { BaseRepository } from 'src/core/repository/base.repository';
@@ -28,58 +32,65 @@ export class UsersRepository extends BaseRepository<User> {
   async createUser(userData: CreateUserDto): Promise<User> {
     await this.checkUniqueFields(userData);
 
-    // Set default role and status
-    const userEntity = this.create({
-      ...userData,
-      role: UserRole.USER,
-      status: UserStatus.PENDING_ACTIVATION,
+    // Use the transaction method from BaseRepository
+    return await this.transaction(async (queryRunner: QueryRunner) => {
+      const userEntity = this.create({
+        ...userData,
+        role: UserRole.USER,
+        status: UserStatus.PENDING_ACTIVATION,
+      });
+
+      const user = await queryRunner.manager.save(userEntity);
+      this.logger.info('User created', 'UsersRepository', { userId: user.id });
+      return user;
     });
-
-    const user = await this.save(userEntity);
-    this.logger.log('User created', 'UsersRepository', { id: user.id });
-    return user;
-  }
-
-  // Ensure 'save' method is accessible from BaseRepository
-  public async save(entity: User): Promise<User> {
-    return super.save(entity);
   }
 
   /**
    * Checks for unique fields to prevent duplicates.
    */
   private async checkUniqueFields(userData: CreateUserDto): Promise<void> {
-    const uniqueFields: (keyof CreateUserDto & keyof User)[] = [
-      'email',
-      'userName',
-      'fcn',
-      'fin',
-    ];
-    const existingFields: string[] = [];
+    const conditions: FindOptionsWhere<User>[] = [];
 
-    for (const field of uniqueFields) {
-      const value = userData[field];
-      if (value) {
-        const exists = await this.exists({
-          [field]: value,
-          deletedAt: IsNull(),
-        } as FindOptionsWhere<User>);
-        if (exists) {
-          existingFields.push(field);
-        }
-      }
+    if (userData.email) {
+      conditions.push({
+        email: userData.email.trim().toLowerCase(),
+        deletedAt: IsNull(),
+      });
     }
-
+    if (userData.userName) {
+      conditions.push({
+        userName: userData.userName.trim(),
+        deletedAt: IsNull(),
+      });
+    }
+    if (userData.fcn) {
+      conditions.push({ fcn: userData.fcn, deletedAt: IsNull() });
+    }
+    if (userData.fin) {
+      conditions.push({ fin: userData.fin, deletedAt: IsNull() });
+    }
     if (userData.address?.phoneNumber) {
-      const phoneNumberExists = await this.phoneNumberExists(
-        userData.address.phoneNumber,
-      );
-      if (phoneNumberExists) {
-        existingFields.push('phoneNumber');
-      }
+      conditions.push({
+        address: { phoneNumber: userData.address.phoneNumber },
+        deletedAt: IsNull(),
+      });
     }
 
-    if (existingFields.length > 0) {
+    if (conditions.length === 0) return;
+
+    const existingUser = await this.repository.findOne({ where: conditions });
+
+    if (existingUser) {
+      const existingFields = [];
+      if (existingUser.email === userData.email) existingFields.push('email');
+      if (existingUser.userName === userData.userName)
+        existingFields.push('userName');
+      if (existingUser.fcn === userData.fcn) existingFields.push('fcn');
+      if (existingUser.fin === userData.fin) existingFields.push('fin');
+      if (existingUser.address?.phoneNumber === userData.address?.phoneNumber)
+        existingFields.push('phoneNumber');
+
       this.logger.warn(
         'Attempt to create user with existing fields',
         'UsersRepository',
@@ -95,14 +106,7 @@ export class UsersRepository extends BaseRepository<User> {
    * Retrieves a user by ID, ensuring they are not soft-deleted.
    */
   async getUserById(id: string): Promise<User> {
-    const user = await this.findOne({
-      where: { id, deletedAt: IsNull() },
-    });
-    if (!user) {
-      this.logger.warn('User not found', 'UsersRepository', { id });
-      throw new NotFoundException('User not found');
-    }
-    return user;
+    return await this.findOne({ where: { id, deletedAt: IsNull() } });
   }
 
   /**
@@ -119,16 +123,17 @@ export class UsersRepository extends BaseRepository<User> {
    */
   async updateUser(id: string, updateData: Partial<User>): Promise<User> {
     await this.update(id, updateData);
-    this.logger.log('User updated', 'UsersRepository', { id });
-    return this.getUserById(id);
+    this.logger.info('User updated', 'UsersRepository', { userId: id });
+    return await this.getUserById(id);
   }
 
   /**
    * Marks a user as deleted.
    */
   async deleteUser(id: string): Promise<void> {
-    await this.update(id, { status: UserStatus.DELETED });
-    this.logger.log('User deleted', 'UsersRepository', { id });
+    const user = await this.getUserById(id);
+    await this.repository.softRemove(user);
+    this.logger.info('User soft-deleted', 'UsersRepository', { userId: id });
   }
 
   /**
@@ -138,73 +143,30 @@ export class UsersRepository extends BaseRepository<User> {
     email: string,
     includePassword = false,
   ): Promise<User | null> {
-    const queryBuilder = this.repository.createQueryBuilder('user');
-    queryBuilder.where('LOWER(user.email) = :email', {
-      email: email.trim().toLowerCase(),
-    });
+    const queryBuilder = this.repository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', {
+        email: email.trim().toLowerCase(),
+      })
+      .andWhere('user.deletedAt IS NULL');
+
     if (includePassword) {
       queryBuilder.addSelect('user.password');
     }
-    return queryBuilder.getOne();
-  }
 
-  /**
-   * Checks if an email is already in use.
-   */
-  async emailExists(email: string): Promise<boolean> {
-    return this.exists({
-      email: email.trim().toLowerCase(),
-      deletedAt: IsNull(),
-    });
-  }
-
-  /**
-   * Checks if a username is already in use.
-   */
-  async userNameExists(userName: string): Promise<boolean> {
-    return this.exists({
-      userName: userName.trim(),
-      deletedAt: IsNull(),
-    });
-  }
-
-  /**
-   * Checks if an FCN is already in use.
-   */
-  async fcnExists(fcn: string): Promise<boolean> {
-    return this.exists({
-      fcn,
-      deletedAt: IsNull(),
-    });
-  }
-
-  /**
-   * Checks if a FIN is already in use.
-   */
-  async finExists(fin: string): Promise<boolean> {
-    return this.exists({
-      fin,
-      deletedAt: IsNull(),
-    });
-  }
-
-  /**
-   * Checks if a phone number is already in use.
-   */
-  async phoneNumberExists(phoneNumber: string): Promise<boolean> {
-    return this.exists({
-      address: { phoneNumber },
-      deletedAt: IsNull(),
-    } as FindOptionsWhere<User>);
+    const user = await queryBuilder.getOne();
+    return user || null;
   }
 
   /**
    * Updates the user's status.
    */
   async updateUserStatus(id: string, status: UserStatus): Promise<void> {
-    await this.update(id, { status });
-    this.logger.log('User status updated', 'UsersRepository', {
-      id,
+    const user = await this.getUserById(id);
+    user.status = status;
+    await this.save(user);
+    this.logger.info('User status updated', 'UsersRepository', {
+      userId: id,
       status,
     });
   }
@@ -216,22 +178,57 @@ export class UsersRepository extends BaseRepository<User> {
     query: string,
     paginationOptions: PaginationOptions<User>,
   ): Promise<PaginationResult<User>> {
-    const where: FindOptionsWhere<User>[] = [
-      { email: ILike(`%${query}%`), deletedAt: IsNull() },
-      { userName: ILike(`%${query}%`), deletedAt: IsNull() },
-      { fcn: ILike(`%${query}%`), deletedAt: IsNull() },
-      { fin: ILike(`%${query}%`), deletedAt: IsNull() },
-      { address: { phoneNumber: ILike(`%${query}%`) }, deletedAt: IsNull() },
-    ];
-    return this.findAll({ ...paginationOptions, options: { where } });
+    const { page = 1, limit = 10, sort = [] } = paginationOptions;
+
+    const queryBuilder = this.repository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.address', 'address')
+      .where('user.deletedAt IS NULL')
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where('LOWER(user.email) LIKE :query', {
+            query: `%${query.toLowerCase()}%`,
+          })
+            .orWhere('LOWER(user.userName) LIKE :query', {
+              query: `%${query.toLowerCase()}%`,
+            })
+            .orWhere('user.fcn LIKE :query', { query: `%${query}%` })
+            .orWhere('user.fin LIKE :query', { query: `%${query}%` })
+            .orWhere('address.phoneNumber LIKE :query', {
+              query: `%${query}%`,
+            });
+        }),
+      )
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    // Apply sorting
+    sort.forEach(({ field, order }) => {
+      queryBuilder.addOrderBy(`user.${field}`, order);
+    });
+
+    const [data, total] = await queryBuilder.getManyAndCount();
+
+    return { data, total, page, limit };
   }
 
   /**
    * Increments the failed login attempts counter.
    */
   async incrementFailedLoginAttempts(id: string): Promise<void> {
-    await this.repository.increment({ id }, 'failedLoginAttempts', 1);
-    this.logger.warn('Failed login attempt', 'UsersRepository', { id });
+    const userExists = await this.exists({ id });
+    if (userExists) {
+      await this.repository.increment({ id }, 'failedLoginAttempts', 1);
+      this.logger.warn('Failed login attempt', 'UsersRepository', {
+        userId: id,
+      });
+    } else {
+      this.logger.warn(
+        'Attempted to increment failed login attempts for non-existent user',
+        'UsersRepository',
+        { userId: id },
+      );
+    }
   }
 
   /**
@@ -245,5 +242,17 @@ export class UsersRepository extends BaseRepository<User> {
       ...paginationOptions,
       options: { where: { status, deletedAt: IsNull() } },
     });
+  }
+
+  // Protected save method to enforce business rules
+  public async save(entity: User): Promise<User> {
+    return super.save(entity);
+  }
+
+  public async fieldExists(field: string, value: any): Promise<boolean> {
+    const where = field
+      .split('.')
+      .reduceRight((value, key) => ({ [key]: value }), value);
+    return await this.exists({ ...where, deletedAt: IsNull() });
   }
 }

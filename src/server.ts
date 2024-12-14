@@ -29,12 +29,12 @@ export async function bootstrap() {
 
 function getHttpsOptions() {
   if (process.env.USE_HTTPS !== 'true') {
-    return null;
+    return undefined;
   }
 
   return {
-    key: fs.readFileSync(process.env.SSL_KEY_PATH),
-    cert: fs.readFileSync(process.env.SSL_CERT_PATH),
+    key: fs.readFileSync(process.env.SSL_KEY_PATH ?? ''),
+    cert: fs.readFileSync(process.env.SSL_CERT_PATH ?? ''),
   };
 }
 

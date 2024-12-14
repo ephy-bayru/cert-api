@@ -65,6 +65,12 @@ export class User {
   @Column({ nullable: true, unique: true, length: 20 })
   phoneNumber?: string;
 
+  @Column({ type: 'date', nullable: true })
+  dateOfBirth?: Date;
+
+  @Column({ nullable: true, length: 20 })
+  gender?: string;
+
   @Column({ nullable: true, unique: true, length: 16 })
   fcn?: string; // National ID number
 

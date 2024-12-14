@@ -24,6 +24,14 @@ import { LoggerService } from 'src/common/services/logger.service';
             databaseLoggerService,
             loggerService,
           );
+
+          if (typeormOptions.synchronize) {
+            loggerService.warn(
+              'Synchronize is enabled! This should be disabled in production to avoid unintended schema changes.',
+              'DatabaseModule',
+            );
+          }
+
           loggerService.log(
             'TypeORM configuration loaded successfully',
             'DatabaseModule',

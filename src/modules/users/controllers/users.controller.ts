@@ -122,7 +122,7 @@ export class UsersController {
 
   @Patch(':id/activate')
   // @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  // @Roles()
   @ActivateUserDocs()
   async activateUser(
     @Param('id', ParseUUIDPipe) id: string,

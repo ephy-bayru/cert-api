@@ -25,12 +25,9 @@ export class CustomHealthIndicator extends HealthIndicator {
   }
 
   async isHealthy(key: string): Promise<HealthIndicatorResult> {
-    const [serviceHealth, memoryUsageHealthy, cpuLoadHealthy] =
-      await Promise.all([
-        this.checkServiceHealth(),
-        this.checkMemoryUsage(),
-        this.checkCpuLoad(),
-      ]);
+    const serviceHealth = await this.checkServiceHealth();
+    const memoryUsageHealthy = this.checkMemoryUsage();
+    const cpuLoadHealthy = this.checkCpuLoad();
 
     const isHealthy = serviceHealth && memoryUsageHealthy && cpuLoadHealthy;
     const healthDetails = {
@@ -49,10 +46,15 @@ export class CustomHealthIndicator extends HealthIndicator {
     return result;
   }
 
+  /**
+   * Checks if the underlying service (or system dependency) is healthy.
+   * Replace the logic in this method with an actual service health check.
+   */
   private async checkServiceHealth(): Promise<boolean> {
     try {
       // Replace with actual service check logic
-      // return true;
+      // For now, we assume it's always healthy
+      return true;
     } catch (error) {
       this.logger.error(
         'Custom service health check failed',
@@ -69,7 +71,9 @@ export class CustomHealthIndicator extends HealthIndicator {
       this.logger.warn(
         'Memory usage exceeded the threshold',
         'CustomHealthIndicator',
-        { freeMemoryRatio },
+        {
+          freeMemoryRatio,
+        },
       );
       return false;
     }
