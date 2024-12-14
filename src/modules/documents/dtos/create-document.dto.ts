@@ -7,6 +7,7 @@ import {
   IsUUID,
 } from 'class-validator';
 import { DocumentStatus } from '../entities/document-status.enum';
+import { DocumentType } from '../entities/document-type.enum';
 
 export class CreateDocumentDto {
   @IsString()
@@ -16,8 +17,8 @@ export class CreateDocumentDto {
   @IsString()
   description?: string;
 
-  @IsString()
-  documentType: string;
+  @IsEnum(DocumentType)
+  documentType: DocumentType;
 
   @IsOptional()
   @IsDate()

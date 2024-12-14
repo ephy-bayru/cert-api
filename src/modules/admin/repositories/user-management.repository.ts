@@ -112,7 +112,7 @@ export class UserManagementRepository extends BaseRepository<User> {
    */
   async deactivateUser(id: string): Promise<void> {
     try {
-      await this.update(id, { status: UserStatus.DEACTIVATED });
+      await this.update(id, { status: UserStatus.INACTIVE });
     } catch (error) {
       this.handleError('Error deactivating user', error, { id });
     }

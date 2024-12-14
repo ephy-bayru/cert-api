@@ -36,7 +36,7 @@ export class NotificationHandler {
   ): NotificationDTO {
     return this.notificationFactory.create(
       NotificationType.EMAIL,
-      NotificationContentType.DOCUMENT_STATUS_CHANGE,
+      NotificationContentType.DOCUMENT_STATUS_UPDATED,
       recipientId,
       {
         username,

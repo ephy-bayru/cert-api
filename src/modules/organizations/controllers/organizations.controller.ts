@@ -312,23 +312,28 @@ export class OrganizationController {
     @Query('isActive') isActive?: boolean,
     @Query('department') department?: string,
   ): Promise<PaginationResult<OrganizationUser>> {
+    // Initialize whereOptions as a non-optional object
+    const whereOptions: FindOptionsWhere<OrganizationUser> = { organizationId };
+
+    // Conditionally add filters
+    if (role) {
+      whereOptions.role = role;
+    }
+    if (isActive !== undefined) {
+      whereOptions.isActive = isActive;
+    }
+    if (department) {
+      whereOptions.department = department;
+    }
+
+    // Define pagination options with initialized where
     const paginationOptions: PaginationOptions<OrganizationUser> = {
       page,
       limit,
       options: {
-        where: { organizationId },
+        where: whereOptions,
       },
     };
-
-    if (role) {
-      paginationOptions.options.where['role'] = role;
-    }
-    if (isActive !== undefined) {
-      paginationOptions.options.where['isActive'] = isActive;
-    }
-    if (department) {
-      paginationOptions.options.where['department'] = department;
-    }
 
     return this.organizationUserService.listOrganizationUsers(
       organizationId,

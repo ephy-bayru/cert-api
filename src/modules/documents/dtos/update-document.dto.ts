@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsArray, IsEnum, IsDate } from 'class-validator';
 import { DocumentStatus } from '../entities/document-status.enum';
+import { DocumentType } from '../entities/document-type.enum';
 
 export class UpdateDocumentDto {
   @IsOptional()
@@ -11,8 +12,8 @@ export class UpdateDocumentDto {
   description?: string;
 
   @IsOptional()
-  @IsString()
-  documentType?: string;
+  @IsEnum(DocumentType)
+  documentType: DocumentType;
 
   @IsOptional()
   @IsDate()

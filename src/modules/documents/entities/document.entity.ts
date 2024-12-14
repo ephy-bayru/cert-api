@@ -14,7 +14,6 @@ import {
 } from 'typeorm';
 import { Organization } from '@modules/organizations/entities/organization.entity';
 import { User } from '@modules/users/entities/user.entity';
-import { OrganizationUser } from '@modules/organizations/entities/organization-user.entity';
 import { Verification } from '@modules/verifications/entities/verification.entity';
 import { AuditLog } from '@modules/audit/entities/audit-log.entity';
 import { DocumentStatus } from './document-status.enum';
@@ -116,13 +115,7 @@ export class Document {
   verifications: Verification[];
 
   @Column({ type: 'jsonb', nullable: true, name: 'verification_statuses' })
-  verificationStatuses?: {
-    organizationId: string;
-    status: DocumentStatus;
-    verifiedBy: string; // OrganizationUser ID
-    verifiedAt: Date;
-    comments?: string;
-  }[];
+  verificationStatuses?: Record<string, DocumentStatus>;
 
   // Document Access History
   @Column({ type: 'jsonb', nullable: true, name: 'access_history' })

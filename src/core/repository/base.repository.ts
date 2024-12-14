@@ -96,18 +96,18 @@ export class BaseRepository<T extends IBaseEntity>
     }
   }
 
-  create(entity: DeepPartial<T>): T {
+  /**
+   * Creates and immediately saves a new entity instance.
+   */
+  async create(entity: DeepPartial<T>): Promise<T> {
     try {
-      return this.repository.create(entity);
+      return await this.repository.save(entity);
     } catch (error) {
       this.handleError('Error creating entity', error, { entity });
     }
   }
 
-  /**
-   * Adds a save method to the repository.
-   */
-  protected async save(entity: T, options?: SaveOptions): Promise<T> {
+  async save(entity: T, options?: SaveOptions): Promise<T> {
     try {
       return await this.repository.save(entity, options);
     } catch (error) {
@@ -238,9 +238,9 @@ export class BaseRepository<T extends IBaseEntity>
     }
 
     if (options.relations && Array.isArray(options.relations)) {
-      options.relations.forEach((relation) => {
+      for (const relation of options.relations) {
         queryBuilder.leftJoinAndSelect(`entity.${relation}`, relation);
-      });
+      }
     }
   }
 
@@ -248,8 +248,8 @@ export class BaseRepository<T extends IBaseEntity>
     queryBuilder: SelectQueryBuilder<T>,
     sort: Array<{ field: string; order: 'ASC' | 'DESC' }>,
   ): void {
-    sort.forEach(({ field, order }) => {
+    for (const { field, order } of sort) {
       queryBuilder.addOrderBy(`entity.${field}`, order);
-    });
+    }
   }
 }
