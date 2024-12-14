@@ -60,8 +60,8 @@ export class CreateUserDto {
   nationality?: string;
 
   @IsOptional()
-  @IsIn(['male', 'female', 'other'])
-  sex?: string;
+  @IsIn(['male', 'female'])
+  gender?: string;
 
   @IsOptional()
   @IsString()

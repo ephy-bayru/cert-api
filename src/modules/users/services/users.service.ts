@@ -356,4 +356,28 @@ export class UsersService {
       );
     }
   }
+
+  async isFieldUnique(field: string, value: string): Promise<boolean> {
+    return !(await this.usersRepository.fieldExists(field, value));
+  }
+
+  async isEmailUnique(email: string): Promise<boolean> {
+    return this.isFieldUnique('email', email.trim().toLowerCase());
+  }
+
+  async isUserNameUnique(userName: string): Promise<boolean> {
+    return this.isFieldUnique('userName', userName.trim());
+  }
+
+  async isFcnUnique(fcn: string): Promise<boolean> {
+    return this.isFieldUnique('fcn', fcn);
+  }
+
+  async isFinUnique(fin: string): Promise<boolean> {
+    return this.isFieldUnique('fin', fin);
+  }
+
+  async isPhoneNumberUnique(phoneNumber: string): Promise<boolean> {
+    return this.isFieldUnique('address.phoneNumber', phoneNumber);
+  }
 }

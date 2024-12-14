@@ -3,27 +3,30 @@ import { UserResponseDto } from './user-response.dto';
 import { User } from '../entities/user.entity';
 import { AuthResponseDto } from './auth-response.dto';
 import { ConfigService } from '@nestjs/config';
+import { UserStatus } from '../entities/user-status.entity';
 
 @Injectable()
 export class UserMapper {
   constructor(private configService: ConfigService) {}
 
   toResponseDto(user: User): UserResponseDto {
-    return {
+    const isActive = user.status === UserStatus.ACTIVE;
+
+    return new UserResponseDto({
       id: user.id,
       email: user.email,
       userName: user.userName,
-      fullName: `${user.firstName} ${user.lastName}`,
-      isActive: user.status === 'ACTIVE',
+      fullName: [user.firstName, user.lastName]
+        .filter(Boolean)
+        .join(' ')
+        .trim(),
+      isActive,
       role: user.role,
       status: user.status,
       firstName: user.firstName,
       lastName: user.lastName,
       surname: user.surname,
       provider: user.provider,
-      dateOfBirth: user.dateOfBirth,
-      nationality: user.nationality,
-      sex: user.sex,
       fcn: user.fcn,
       fin: user.fin,
       address: user.address
@@ -39,10 +42,12 @@ export class UserMapper {
             woreda: user.address.woreda,
             phoneNumber: user.address.phoneNumber,
           }
-        : null,
+        : undefined,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-    };
+      dateOfBirth: user.dateOfBirth,
+      gender: user.gender,
+    });
   }
 
   toAuthResponseDto(

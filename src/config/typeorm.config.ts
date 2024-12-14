@@ -10,12 +10,9 @@ export const typeormConfig = (
   logger: LoggerService,
 ): TypeOrmModuleOptions => {
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
-
-  // SSL Configuration
   const sslEnabled = configService.get<boolean>('DB_SSL', false);
   const sslOptions = sslEnabled ? { rejectUnauthorized: false } : false;
 
-  // Required Configuration Check
   const requiredConfig = ['DB_HOST', 'DB_USERNAME', 'DB_PASSWORD', 'DB_NAME'];
   for (const key of requiredConfig) {
     if (!configService.get<string>(key)) {
@@ -28,14 +25,12 @@ export const typeormConfig = (
     }
   }
 
-  // Database Logging Configuration
   const loggingOptions =
     databaseLoggerService.determineDatabaseLoggingOptions();
-
   const dbHost = configService.get<string>('DB_HOST');
+
   logger.log(`Attempting to connect to database at ${dbHost}`, 'TypeOrmConfig');
 
-  // Use glob patterns to load entities
   const entities = [
     path.resolve(
       __dirname,
@@ -46,7 +41,6 @@ export const typeormConfig = (
       '*.entity.{ts,js}',
     ),
   ];
-
   const migrations = [path.resolve(__dirname, '..', 'migrations', '*.{ts,js}')];
 
   const config: TypeOrmModuleOptions = {
@@ -89,7 +83,7 @@ export const typeormConfig = (
   if (!isProduction) {
     logger.debug('Detailed TypeORM configuration', 'TypeOrmConfig', {
       ...config,
-      password: '[REDACTED]', // Hide sensitive info
+      password: '[REDACTED]',
       entities,
     });
   }

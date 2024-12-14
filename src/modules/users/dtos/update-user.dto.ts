@@ -67,10 +67,10 @@ export class UpdateUserDto {
   nationality?: string;
 
   @IsOptional()
-  @IsIn(['male', 'female', 'other'], {
-    message: 'Sex must be male, female, or other.',
+  @IsIn(['male', 'female'], {
+    message: 'Gender must be male, female.',
   })
-  sex?: string;
+  gender?: string;
 
   @IsOptional()
   @IsString({ message: 'FCN must be a string.' })

@@ -15,14 +15,13 @@ export class UserResponseDto {
   lastName: string;
   surname?: string;
   provider: ProviderType;
-  dateOfBirth?: Date;
-  nationality?: string;
-  sex?: string;
   fcn?: string;
   fin?: string;
   address?: AddressDto;
   createdAt: Date;
   updatedAt: Date;
+  dateOfBirth?: Date;
+  gender?: string;
 
   constructor(partial: Partial<UserResponseDto>) {
     Object.assign(this, partial);
