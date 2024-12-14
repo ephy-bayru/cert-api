@@ -76,15 +76,23 @@ export class LoggerService implements NestLoggerService {
       return data;
     }
 
-    const maskedData = Array.isArray(data) ? [] : {};
+    let maskedData: any;
 
-    for (const [key, value] of Object.entries(data)) {
-      if (key.toLowerCase().includes('password')) {
-        maskedData[key] = '*'.repeat(8); // Mask with 8 asterisks
-      } else if (typeof value === 'object' && value !== null) {
-        maskedData[key] = this.maskSensitiveData(value);
-      } else {
-        maskedData[key] = value;
+    if (Array.isArray(data)) {
+      maskedData = [];
+      for (let i = 0; i < data.length; i++) {
+        maskedData[i] = this.maskSensitiveData(data[i]);
+      }
+    } else {
+      maskedData = {} as { [key: string]: any };
+      for (const [key, value] of Object.entries(data)) {
+        if (key.toLowerCase().includes('password')) {
+          maskedData[key] = '*'.repeat(8);
+        } else if (typeof value === 'object' && value !== null) {
+          maskedData[key] = this.maskSensitiveData(value);
+        } else {
+          maskedData[key] = value;
+        }
       }
     }
 
