@@ -4,27 +4,19 @@ cert-api/
     |-- .gitignore
     |-- .prettierrc
     |-- .vscode/
+        |-- launch.json
         |-- settings.json
     |-- README.md
     |-- directory_structure.md
     |-- hardhat.config.ts
     |-- list_project_structure.py
     |-- logs/
-        |-- app-2024-10-09.log
-        |-- app-2024-10-10.log
-        |-- app-2024-10-14.log
-        |-- app-2024-10-16.log
-        |-- app-2024-10-23.log
+        |-- app-2024-10-06.log
+        |-- app-2024-10-07.log
+        |-- app-2024-10-08.log
         |-- app-2024-10-26.log
-        |-- app-2024-10-29.log
-        |-- app-2024-11-01.log
-        |-- app-2024-11-02.log
-        |-- app-2024-11-13.log
-        |-- app-2024-11-14.log
-        |-- app-2024-11-17.log
-        |-- app-2024-11-18.log
-        |-- app-2024-11-19.log
-        |-- app-2024-11-21.log
+        |-- app-2024-12-14.log
+        |-- app-2024-12-15.log
     |-- nest-cli.json
     |-- package.json
     |-- src/
@@ -48,6 +40,8 @@ cert-api/
                 |-- blockchain.service.ts
         |-- common/
             |-- common.module.ts
+            |-- constants/
+                |-- role-hierarchy.constant.ts
             |-- decorators/
                 |-- current-user.decorator.ts
                 |-- public.decorator.ts
@@ -56,8 +50,11 @@ cert-api/
                 |-- user.decorator.ts
             |-- dtos/
                 |-- pagination-query.dto.ts
+            |-- enum/
+                |-- roles.enum.ts
             |-- filters/
                 |-- global-exception.filter.ts
+            |-- guards/
             |-- interceptors/
                 |-- transform.interceptor.ts
             |-- interfaces/
@@ -70,6 +67,7 @@ cert-api/
                 |-- export.service.ts
                 |-- logger.service.ts
             |-- utils/
+                |-- api-global-responses.decorator.ts
                 |-- logging.interceptor.ts
                 |-- mask-utils.ts
                 |-- pagination-utils.ts
@@ -86,9 +84,33 @@ cert-api/
                 |-- base.repository.ts
             |-- services/
                 |-- database-logger.service.ts
+        |-- data-source.ts
         |-- main.ts
+        |-- migrations/
         |-- modules/
             |-- admin/
+                |-- admin.module.ts
+                |-- controller/
+                    |-- admin-users.controller.ts
+                |-- documentation/
+                    |-- admin-user.model.documentation.ts
+                    |-- admin-users.controller.documentation.ts
+                    |-- admin-users.dto.documentation.ts
+                |-- dtos/
+                    |-- admin-user-response.dto.ts
+                    |-- change-admin-user-password.dto.ts
+                    |-- create-admin-user.dto.ts
+                    |-- update-admin-user.dto.ts
+                |-- entities/
+                    |-- admin-user.entity.ts
+                |-- repositories/
+                    |-- admin-users.repository.ts
+                    |-- organization-management.repository.ts
+                    |-- user-management.repository.ts
+                |-- services/
+                    |-- admin-users.service.ts
+                    |-- organization-management.service.ts
+                    |-- user-management.service.ts
             |-- audit/
                 |-- audit.module.ts
                 |-- controllers/
@@ -113,7 +135,6 @@ cert-api/
                 |-- auth.controller.ts
                 |-- auth.module.ts
                 |-- auth.service.ts
-                |-- controller/
                 |-- dto/
                     |-- auth-response.dto.ts
                     |-- login.dto.ts
@@ -124,7 +145,6 @@ cert-api/
                     |-- jwt-payload.interface.ts
                 |-- repository/
                     |-- auth.repository.ts
-                |-- services/
                 |-- strategies/
                     |-- jwt.strategy.ts
             |-- documents/
@@ -147,6 +167,7 @@ cert-api/
                     |-- document-status.enum.ts
                     |-- document-type.enum.ts
                     |-- document.entity.ts
+                |-- enums/
                 |-- interfaces/
                     |-- document-filters.interface.ts
                 |-- repository/
@@ -237,6 +258,7 @@ cert-api/
                     |-- organization-user-role.enum.ts
                     |-- organization-user.entity.ts
                     |-- organization.entity.ts
+                |-- enums/
                 |-- interfaces/
                     |-- organization.interface.ts
                 |-- organizations.module.ts
@@ -257,11 +279,8 @@ cert-api/
                 |-- validations/
                     |-- organization.validation.ts
             |-- settings/
-                |-- controller/
-                |-- dtos/
                 |-- repositories/
                     |-- settings.repository.ts
-                |-- services/
             |-- users/
                 |-- controllers/
                     |-- users.controller.spec.ts
@@ -289,6 +308,7 @@ cert-api/
                     |-- login-status.enum.ts
                     |-- provider-types.ts
                     |-- theme-preference.enum.ts
+                |-- interfaces/
                 |-- pipes/
                     |-- unique-user-validation.pipe.ts
                 |-- repository/
@@ -296,6 +316,7 @@ cert-api/
                 |-- services/
                     |-- users.service.ts
                 |-- users.module.ts
+                |-- validations/
             |-- verifications/
                 |-- controllers/
                     |-- verifications.controller.ts
@@ -309,6 +330,7 @@ cert-api/
                 |-- entities/
                     |-- verification-status.enum.ts
                     |-- verification.entity.ts
+                |-- enums/
                 |-- interfaces/
                     |-- verification.interface.ts
                 |-- repository/
@@ -321,7 +343,6 @@ cert-api/
         |-- server.ts
     |-- test/
         |-- app.e2e-spec.ts
-        |-- blockchain/
         |-- jest-e2e.json
     |-- tsconfig.build.json
     |-- tsconfig.json
