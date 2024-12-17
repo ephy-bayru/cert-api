@@ -22,6 +22,7 @@ import { LoggerService } from 'src/common/services/logger.service';
           const typeormOptions = typeormConfig(
             configService,
             databaseLoggerService,
+            loggerService,
           );
 
           if (typeormOptions.synchronize) {

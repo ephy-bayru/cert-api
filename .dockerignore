@@ -1,0 +1,36 @@
+# Dependency directories
+node_modules/
+
+# Logs and databases
+npm-debug.log
+*.log
+
+# Build output
+dist/
+
+# Environment files
+.env
+.env.*
+
+# Various IDE and OS files
+*.bin
+*.tmp
+*.DS_Store
+.vscode/
+.idea/
+
+# Ignore git directories and files
+.git/
+.gitignore
+
+# Ignore other common directories
+coverage/
+temp/
+
+# Ignore configuration files that may contain sensitive information
+*.pem
+*.key
+*.cert
+
+# Docker-specific files
+docker-compose*.yml
