@@ -1,4 +1,5 @@
 cert-api/
+    |-- .dockerignore
     |-- .env
     |-- .eslintrc.js
     |-- .gitignore
@@ -6,17 +7,35 @@ cert-api/
     |-- .vscode/
         |-- launch.json
         |-- settings.json
+    |-- Dockerfile
     |-- README.md
     |-- directory_structure.md
+    |-- docker-compose.yml
     |-- hardhat.config.ts
     |-- list_project_structure.py
     |-- logs/
-        |-- app-2024-10-06.log
-        |-- app-2024-10-07.log
-        |-- app-2024-10-08.log
+        |-- app-2024-10-09.log
+        |-- app-2024-10-10.log
+        |-- app-2024-10-14.log
+        |-- app-2024-10-16.log
+        |-- app-2024-10-23.log
         |-- app-2024-10-26.log
-        |-- app-2024-12-14.log
-        |-- app-2024-12-15.log
+        |-- app-2024-10-29.log
+        |-- app-2024-11-01.log
+        |-- app-2024-11-02.log
+        |-- app-2024-11-13.log
+        |-- app-2024-11-14.log
+        |-- app-2024-11-17.log
+        |-- app-2024-11-18.log
+        |-- app-2024-11-19.log
+        |-- app-2024-11-21.log
+        |-- app-2024-11-22.log
+        |-- app-2024-12-04.log
+        |-- app-2024-12-05.log
+        |-- app-2024-12-10.log
+        |-- app-2024-12-11.log
+        |-- app-2024-12-12.log
+        |-- app-2024-12-19.log
     |-- nest-cli.json
     |-- package.json
     |-- src/
@@ -54,7 +73,6 @@ cert-api/
                 |-- roles.enum.ts
             |-- filters/
                 |-- global-exception.filter.ts
-            |-- guards/
             |-- interceptors/
                 |-- transform.interceptor.ts
             |-- interfaces/
@@ -135,6 +153,7 @@ cert-api/
                 |-- auth.controller.ts
                 |-- auth.module.ts
                 |-- auth.service.ts
+                |-- controller/
                 |-- dto/
                     |-- auth-response.dto.ts
                     |-- login.dto.ts
@@ -145,6 +164,7 @@ cert-api/
                     |-- jwt-payload.interface.ts
                 |-- repository/
                     |-- auth.repository.ts
+                |-- services/
                 |-- strategies/
                     |-- jwt.strategy.ts
             |-- documents/
@@ -167,7 +187,6 @@ cert-api/
                     |-- document-status.enum.ts
                     |-- document-type.enum.ts
                     |-- document.entity.ts
-                |-- enums/
                 |-- interfaces/
                     |-- document-filters.interface.ts
                 |-- repository/
@@ -258,7 +277,6 @@ cert-api/
                     |-- organization-user-role.enum.ts
                     |-- organization-user.entity.ts
                     |-- organization.entity.ts
-                |-- enums/
                 |-- interfaces/
                     |-- organization.interface.ts
                 |-- organizations.module.ts
@@ -279,8 +297,11 @@ cert-api/
                 |-- validations/
                     |-- organization.validation.ts
             |-- settings/
+                |-- controller/
+                |-- dtos/
                 |-- repositories/
                     |-- settings.repository.ts
+                |-- services/
             |-- users/
                 |-- controllers/
                     |-- users.controller.spec.ts
@@ -308,7 +329,6 @@ cert-api/
                     |-- login-status.enum.ts
                     |-- provider-types.ts
                     |-- theme-preference.enum.ts
-                |-- interfaces/
                 |-- pipes/
                     |-- unique-user-validation.pipe.ts
                 |-- repository/
@@ -316,7 +336,6 @@ cert-api/
                 |-- services/
                     |-- users.service.ts
                 |-- users.module.ts
-                |-- validations/
             |-- verifications/
                 |-- controllers/
                     |-- verifications.controller.ts
@@ -330,7 +349,6 @@ cert-api/
                 |-- entities/
                     |-- verification-status.enum.ts
                     |-- verification.entity.ts
-                |-- enums/
                 |-- interfaces/
                     |-- verification.interface.ts
                 |-- repository/
@@ -343,6 +361,7 @@ cert-api/
         |-- server.ts
     |-- test/
         |-- app.e2e-spec.ts
+        |-- blockchain/
         |-- jest-e2e.json
     |-- tsconfig.build.json
     |-- tsconfig.json

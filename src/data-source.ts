@@ -4,34 +4,28 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const getEntitiesPath = (moduleName: string) =>
-  path.join(__dirname, 'modules', moduleName, 'entities', '*.entity.{ts,js}');
+const sslEnabled = process.env.DB_SSL === 'true';
 
-const AppDataSource = new DataSource({
+const entitiesPaths = [
+  path.join(__dirname, 'modules', 'users', 'entities', '*.entity.{ts,js}'),
+  path.join(__dirname, 'modules', 'organizations', 'entities', '*.entity.{ts,js}'),
+  path.join(__dirname, 'modules', 'admin', 'entities', '*.entity.{ts,js}'),
+  path.join(__dirname, 'modules', 'audit', 'entities', '*.entity.{ts,js}'),
+  path.join(__dirname, 'modules', 'documents', 'entities', '*.entity.{ts,js}'),
+  path.join(__dirname, 'modules', 'notifications', 'entities', '*.entity.{ts,js}'),
+  path.join(__dirname, 'modules', 'verifications', 'entities', '*.entity.{ts,js}'),
+];
+
+export const AppDataSource = new DataSource({
   type: 'postgres',
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT ?? '5432', 10),
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  entities: [
-    getEntitiesPath('users'),
-    getEntitiesPath('organizations'),
-    getEntitiesPath('admin'),
-    getEntitiesPath('audit'),
-    getEntitiesPath('auth'),
-    getEntitiesPath('documents'),
-    getEntitiesPath('health'),
-    getEntitiesPath('notifications'),
-    getEntitiesPath('settings'),
-    getEntitiesPath('verifications'),
-  ],
+  entities: entitiesPaths,
   migrations: [path.join(__dirname, 'migrations', '*.{ts,js}')],
   synchronize: false,
   logging: ['query', 'error'],
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ...(sslEnabled && { ssl: { rejectUnauthorized: false } }),
 });
-
-export default AppDataSource;

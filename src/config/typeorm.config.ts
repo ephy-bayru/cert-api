@@ -44,14 +44,16 @@ export const typeormConfig = (
   logger: LoggerService,
 ): TypeOrmModuleOptions => {
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
-  const sslEnabled = configService.get<boolean>('DB_SSL', false);
+
+  // Convert DB_SSL to boolean
+  const sslEnabled = configService.get<string>('DB_SSL', 'false') === 'true';
+  // Only set SSL options if enabled
   const sslOptions = sslEnabled ? { rejectUnauthorized: false } : undefined;
 
   // Validate required configuration
   validateConfig(configService, logger);
 
   const dbHost = configService.get<string>('DB_HOST');
-
   logger.log(`Attempting to connect to database at ${dbHost}`, 'TypeOrmConfig');
 
   const entities = [
@@ -70,7 +72,8 @@ export const typeormConfig = (
     migrations,
     autoLoadEntities: true,
     synchronize: false,
-    ssl: sslOptions,
+    // Add SSL only if enabled
+    ...(sslEnabled && { ssl: sslOptions }),
     logger: databaseLoggerService,
     logging: false,
     retryAttempts: configService.get<number>('DB_RETRY_ATTEMPTS', 5),
@@ -95,7 +98,7 @@ export const typeormConfig = (
     migrations,
   });
 
-  // Log full configuration in development
+  // Log full configuration in development without password
   if (!isProduction) {
     const { password, ...safeConfig } = config;
     logger.debug('Detailed TypeORM configuration', 'TypeOrmConfig', {

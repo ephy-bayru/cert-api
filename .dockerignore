@@ -1,36 +1,93 @@
-# Dependency directories
+# =============================================================
+# Node & Build Artifacts
+# =============================================================
 node_modules/
-
-# Logs and databases
-npm-debug.log
-*.log
-
-# Build output
 dist/
+build/
 
-# Environment files
+# =============================================================
+# Logs & Debug Files
+# =============================================================
+logs/
+*.log
+npm-debug.log*
+
+# =============================================================
+# Environment & Sensitive Files
+# =============================================================
 .env
 .env.*
-
-# Various IDE and OS files
-*.bin
-*.tmp
-*.DS_Store
-.vscode/
-.idea/
-
-# Ignore git directories and files
-.git/
-.gitignore
-
-# Ignore other common directories
-coverage/
-temp/
-
-# Ignore configuration files that may contain sensitive information
+.env.local
+.env.development
+.env.test
+.env.production
 *.pem
 *.key
 *.cert
 
-# Docker-specific files
+# =============================================================
+# IDE & Editor Settings
+# =============================================================
+.vscode/
+.idea/
+*.DS_Store
+*.tmp
+*.bin
+
+# =============================================================
+# Version Control
+# =============================================================
+.git/
+.gitignore
+
+# =============================================================
+# Testing & Coverage
+# =============================================================
+test/
+jest-e2e.json
+coverage/
+
+# =============================================================
+# Temporary & Cache Files
+# =============================================================
+temp/
+temp*/
+*.tmp
+*.temp
+.cache/
+.cache*/
+
+# =============================================================
+# Configuration & Sensitive Files
+# =============================================================
+hardhat.config.ts
+contracts/
+abis/
+
+# =============================================================
+# Docker-Related Files
+# =============================================================
+docker-compose.yml
 docker-compose*.yml
+Dockerfile
+
+# Include docker override files
+docker-compose.override.yml
+docker-compose.prod.yml
+
+# =============================================================
+# Linting & Formatting Config
+# =============================================================
+.eslintrc.js
+.prettierrc
+
+# =============================================================
+# Documentation & Miscellaneous
+# =============================================================
+*.md
+*.markdown
+*.sh
+*.bat
+*.cmd
+*.yml
+*.yaml
