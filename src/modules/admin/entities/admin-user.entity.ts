@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
-  Index,
   VersionColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
@@ -17,13 +16,11 @@ export enum AdminRole {
 }
 
 @Entity('admin_users')
-@Index(['email'], { unique: true })
 export class AdminUser {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index({ unique: true })
-  @Column({ length: 150 })
+  @Column({ length: 150, unique: true })
   email: string;
 
   @Column({ select: false })

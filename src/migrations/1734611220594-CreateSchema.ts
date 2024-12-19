@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateSchema1734606505629 implements MigrationInterface {
-    name = 'CreateSchema1734606505629'
+export class CreateSchema1734611220594 implements MigrationInterface {
+    name = 'CreateSchema1734611220594'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TYPE "public"."login_history_status_enum" AS ENUM('SUCCESS', 'FAILURE')`);
@@ -63,9 +63,7 @@ export class CreateSchema1734606505629 implements MigrationInterface {
         await queryRunner.query(`CREATE INDEX "IDX_1e3d0240b49c40521aaeb95329" ON "users" ("phoneNumber") `);
         await queryRunner.query(`CREATE INDEX "IDX_3676155292d72c67cd4e090514" ON "users" ("status") `);
         await queryRunner.query(`CREATE TYPE "public"."admin_users_role_enum" AS ENUM('SUPER_ADMIN', 'ADMIN', 'SUPPORT')`);
-        await queryRunner.query(`CREATE TABLE "admin_users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "email" character varying(150) NOT NULL, "password" character varying NOT NULL, "firstName" character varying(100), "lastName" character varying(100), "phoneNumber" character varying(100), "role" "public"."admin_users_role_enum" NOT NULL DEFAULT 'ADMIN', "isActive" boolean NOT NULL DEFAULT false, "isLocked" boolean NOT NULL DEFAULT false, "failedLoginAttempts" integer NOT NULL DEFAULT '0', "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "version" integer NOT NULL, "createdBy" uuid, "updatedBy" uuid, "deletedBy" uuid, CONSTRAINT "PK_06744d221bb6145dc61e5dc441d" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_dcd0c8a4b10af9c986e510b9ec" ON "admin_users" ("email") `);
-        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_dcd0c8a4b10af9c986e510b9ec" ON "admin_users" ("email") `);
+        await queryRunner.query(`CREATE TABLE "admin_users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "email" character varying(150) NOT NULL, "password" character varying NOT NULL, "firstName" character varying(100), "lastName" character varying(100), "phoneNumber" character varying(100), "role" "public"."admin_users_role_enum" NOT NULL DEFAULT 'ADMIN', "isActive" boolean NOT NULL DEFAULT false, "isLocked" boolean NOT NULL DEFAULT false, "failedLoginAttempts" integer NOT NULL DEFAULT '0', "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "version" integer NOT NULL, "createdBy" uuid, "updatedBy" uuid, "deletedBy" uuid, CONSTRAINT "UQ_dcd0c8a4b10af9c986e510b9ecc" UNIQUE ("email"), CONSTRAINT "PK_06744d221bb6145dc61e5dc441d" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "document_user_access" ("document_id" uuid NOT NULL, "user_id" uuid NOT NULL, CONSTRAINT "PK_8134d8172247c58c225d7599844" PRIMARY KEY ("document_id", "user_id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_81bff484fe3e66896ca79ad40e" ON "document_user_access" ("document_id") `);
         await queryRunner.query(`CREATE INDEX "IDX_4ac2d839934fda5aefa89b2dfc" ON "document_user_access" ("user_id") `);
@@ -123,8 +121,6 @@ export class CreateSchema1734606505629 implements MigrationInterface {
         await queryRunner.query(`DROP INDEX "public"."IDX_4ac2d839934fda5aefa89b2dfc"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_81bff484fe3e66896ca79ad40e"`);
         await queryRunner.query(`DROP TABLE "document_user_access"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_dcd0c8a4b10af9c986e510b9ec"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_dcd0c8a4b10af9c986e510b9ec"`);
         await queryRunner.query(`DROP TABLE "admin_users"`);
         await queryRunner.query(`DROP TYPE "public"."admin_users_role_enum"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_3676155292d72c67cd4e090514"`);
