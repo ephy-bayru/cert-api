@@ -8,7 +8,7 @@ import {
   PaginationResult,
 } from '@common/interfaces/IPagination';
 import * as bcrypt from 'bcrypt';
-import { UserStatus } from '@modules/users/entities/user-status.entity';
+import { UserStatus } from '@modules/users/entities/user-status.enum';
 
 @Injectable()
 export class UserManagementRepository extends BaseRepository<User> {

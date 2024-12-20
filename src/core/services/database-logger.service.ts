@@ -1,11 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Logger as TypeOrmLogger, QueryRunner, LogLevel } from 'typeorm';
 import { LoggerService } from 'src/common/services/logger.service';
-import { LoggerOptions, LogLevel } from 'typeorm';
 
 @Injectable()
-export class DatabaseLoggerService {
-  private readonly validOptions: readonly LogLevel[] = [
+export class DatabaseLoggerService implements TypeOrmLogger {
+  private readonly validOptions: LogLevel[] = [
     'query',
     'error',
     'schema',
@@ -13,47 +12,82 @@ export class DatabaseLoggerService {
     'info',
     'log',
     'migration',
-  ] as const;
+  ];
 
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly logger: LoggerService,
-  ) {}
+  constructor(private readonly logger: LoggerService) {}
 
-  public determineDatabaseLoggingOptions(): LoggerOptions {
-    const loggingConfig = this.configService.get<string>('DB_LOGGING', 'false');
+  private isLogLevelEnabled(level: LogLevel): boolean {
+    return this.validOptions.includes(level);
+  }
 
-    if (typeof loggingConfig !== 'string') {
-      this.logger.warn(
-        'DB_LOGGING must be a string. Logging is disabled.',
-        'DatabaseLoggerService',
-      );
-      return false;
+  logQuery(query: string, parameters?: any[], _queryRunner?: QueryRunner) {
+    if (this.isLogLevelEnabled('query')) {
+      this.logger.debug(`Query: ${query}`, 'TypeORM');
+      if (parameters && parameters.length) {
+        this.logger.debug(
+          `Parameters: ${JSON.stringify(parameters)}`,
+          'TypeORM',
+        );
+      }
     }
+  }
 
-    const normalizedConfig = loggingConfig.toLowerCase();
-
-    if (normalizedConfig === 'false') {
-      return false;
+  logQueryError(
+    error: string | Error,
+    query: string,
+    parameters?: any[],
+    _queryRunner?: QueryRunner,
+  ) {
+    if (this.isLogLevelEnabled('error')) {
+      this.logger.error(`Query Error: ${error}`, 'TypeORM', {
+        query,
+        parameters,
+      });
     }
+  }
 
-    if (['true', 'all'].includes(normalizedConfig)) {
-      return 'all';
+  logQuerySlow(
+    time: number,
+    query: string,
+    parameters?: any[],
+    _queryRunner?: QueryRunner,
+  ) {
+    if (this.isLogLevelEnabled('warn')) {
+      this.logger.warn(`Slow Query (${time} ms): ${query}`, 'TypeORM', {
+        parameters,
+      });
     }
+  }
 
-    const options = normalizedConfig.split(',').map((opt) => opt.trim());
-    const filteredOptions = options.filter((opt): opt is LogLevel =>
-      this.validOptions.includes(opt as LogLevel),
-    );
-
-    if (filteredOptions.length === 0) {
-      this.logger.warn(
-        `Invalid DB_LOGGING options provided: ${loggingConfig}. Logging is disabled.`,
-        'DatabaseLoggerService',
-      );
-      return false;
+  logSchemaBuild(message: string, _queryRunner?: QueryRunner) {
+    if (this.isLogLevelEnabled('schema')) {
+      this.logger.info(`Schema Build: ${message}`, 'TypeORM');
     }
+  }
 
-    return filteredOptions;
+  logMigration(message: string, _queryRunner?: QueryRunner) {
+    if (this.isLogLevelEnabled('migration')) {
+      this.logger.info(`Migration: ${message}`, 'TypeORM');
+    }
+  }
+
+  log(
+    level: 'log' | 'info' | 'warn',
+    message: any,
+    _queryRunner?: QueryRunner,
+  ) {
+    if (this.isLogLevelEnabled(level)) {
+      switch (level) {
+        case 'log':
+          this.logger.log(message, 'TypeORM');
+          break;
+        case 'info':
+          this.logger.info(message, 'TypeORM');
+          break;
+        case 'warn':
+          this.logger.warn(message, 'TypeORM');
+          break;
+      }
+    }
   }
 }

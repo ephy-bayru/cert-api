@@ -13,7 +13,7 @@ import {
 } from '@common/interfaces/IPagination';
 import { IsNull, Not } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { UserStatus } from '@modules/users/entities/user-status.entity';
+import { UserStatus } from '@modules/users/entities/user-status.enum';
 import { CreateUserDto } from '@modules/users/dtos/create-user.dto';
 import { UpdateUserDto } from '@modules/users/dtos/update-user.dto';
 import { UserResponseDto } from '@modules/users/dtos/user-response.dto';

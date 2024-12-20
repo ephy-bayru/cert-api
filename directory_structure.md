@@ -1,12 +1,16 @@
 cert-api/
+    |-- .dockerignore
     |-- .env
     |-- .eslintrc.js
     |-- .gitignore
     |-- .prettierrc
     |-- .vscode/
+        |-- launch.json
         |-- settings.json
+    |-- Dockerfile
     |-- README.md
     |-- directory_structure.md
+    |-- docker-compose.yml
     |-- hardhat.config.ts
     |-- list_project_structure.py
     |-- logs/
@@ -25,6 +29,13 @@ cert-api/
         |-- app-2024-11-18.log
         |-- app-2024-11-19.log
         |-- app-2024-11-21.log
+        |-- app-2024-11-22.log
+        |-- app-2024-12-04.log
+        |-- app-2024-12-05.log
+        |-- app-2024-12-10.log
+        |-- app-2024-12-11.log
+        |-- app-2024-12-12.log
+        |-- app-2024-12-19.log
     |-- nest-cli.json
     |-- package.json
     |-- src/
@@ -48,6 +59,8 @@ cert-api/
                 |-- blockchain.service.ts
         |-- common/
             |-- common.module.ts
+            |-- constants/
+                |-- role-hierarchy.constant.ts
             |-- decorators/
                 |-- current-user.decorator.ts
                 |-- public.decorator.ts
@@ -56,6 +69,8 @@ cert-api/
                 |-- user.decorator.ts
             |-- dtos/
                 |-- pagination-query.dto.ts
+            |-- enum/
+                |-- roles.enum.ts
             |-- filters/
                 |-- global-exception.filter.ts
             |-- interceptors/
@@ -70,6 +85,7 @@ cert-api/
                 |-- export.service.ts
                 |-- logger.service.ts
             |-- utils/
+                |-- api-global-responses.decorator.ts
                 |-- logging.interceptor.ts
                 |-- mask-utils.ts
                 |-- pagination-utils.ts
@@ -86,9 +102,33 @@ cert-api/
                 |-- base.repository.ts
             |-- services/
                 |-- database-logger.service.ts
+        |-- data-source.ts
         |-- main.ts
+        |-- migrations/
         |-- modules/
             |-- admin/
+                |-- admin.module.ts
+                |-- controller/
+                    |-- admin-users.controller.ts
+                |-- documentation/
+                    |-- admin-user.model.documentation.ts
+                    |-- admin-users.controller.documentation.ts
+                    |-- admin-users.dto.documentation.ts
+                |-- dtos/
+                    |-- admin-user-response.dto.ts
+                    |-- change-admin-user-password.dto.ts
+                    |-- create-admin-user.dto.ts
+                    |-- update-admin-user.dto.ts
+                |-- entities/
+                    |-- admin-user.entity.ts
+                |-- repositories/
+                    |-- admin-users.repository.ts
+                    |-- organization-management.repository.ts
+                    |-- user-management.repository.ts
+                |-- services/
+                    |-- admin-users.service.ts
+                    |-- organization-management.service.ts
+                    |-- user-management.service.ts
             |-- audit/
                 |-- audit.module.ts
                 |-- controllers/

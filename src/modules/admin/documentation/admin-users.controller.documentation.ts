@@ -13,7 +13,7 @@ import { AdminRole } from '../entities/admin-user.entity';
 import { UpdateOrganizationDto } from '@modules/organizations/dtos/update-organization.dto';
 import { CreateOrganizationDto } from '@modules/organizations/dtos/create-organization.dto';
 import { OrganizationStatus } from '@modules/organizations/entities/organization-status.enum';
-import { UserStatus } from '@modules/users/entities/user-status.entity';
+import { UserStatus } from '@modules/users/entities/user-status.enum';
 import { CreateUserDto } from '@modules/users/dtos/create-user.dto';
 import { UpdateUserDto } from '@modules/users/dtos/update-user.dto';
 

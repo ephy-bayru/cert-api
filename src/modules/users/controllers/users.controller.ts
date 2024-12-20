@@ -35,11 +35,11 @@ import {
 } from '../documentation/users.controller.documentation';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { PaginationOptions } from 'src/common/interfaces/IPagination';
-import { UserStatus } from '../entities/user-status.entity';
+import { UserStatus } from '../entities/user-status.enum';
 import { User } from '../entities/user.entity';
 import { GlobalExceptionFilter } from 'src/common/filters/global-exception.filter';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
-import { UserRole } from '../entities/user-role.entity';
+import { UserRole } from '../entities/user-role.enum';
 
 @ApiTags('Users')
 @Controller({ path: 'users', version: '1' })

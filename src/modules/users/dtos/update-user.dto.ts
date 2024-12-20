@@ -11,8 +11,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { UserRole } from '../entities/user-role.entity';
-import { UserStatus } from '../entities/user-status.entity';
+import { UserRole } from '../entities/user-role.enum';
+import { UserStatus } from '../entities/user-status.enum';
 import { ProviderType } from '../enums/provider-types';
 import { AddressDto } from './address.dto';
 

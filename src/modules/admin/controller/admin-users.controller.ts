@@ -35,7 +35,7 @@ import { OrganizationStatus } from '@modules/organizations/entities/organization
 import { Organization } from '@modules/organizations/entities/organization.entity';
 import { CreateOrganizationDto } from '@modules/organizations/dtos/create-organization.dto';
 import { UpdateOrganizationDto } from '@modules/organizations/dtos/update-organization.dto';
-import { UserStatus } from '@modules/users/entities/user-status.entity';
+import { UserStatus } from '@modules/users/entities/user-status.enum';
 import { UserResponseDto } from '@modules/users/dtos/user-response.dto';
 import { User } from '@modules/users/entities/user.entity';
 import { CreateUserDto } from '@modules/users/dtos/create-user.dto';

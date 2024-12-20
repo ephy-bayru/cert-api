@@ -20,8 +20,8 @@ import { Notification } from '@modules/notifications/entities/notification.entit
 import { AuditLog } from '@modules/audit/entities/audit-log.entity';
 import { UserPreferences } from './user-preference.entity';
 import { ProviderType } from '../enums/provider-types';
-import { UserStatus } from './user-status.entity';
-import { UserRole } from './user-role.entity';
+import { UserStatus } from './user-status.enum';
+import { UserRole } from './user-role.enum';
 
 /**
  * User Entity represents individual users who can:
@@ -81,7 +81,7 @@ export class User {
   @Column({
     type: 'enum',
     enum: ProviderType,
-    default: ProviderType.Local,
+    default: ProviderType.local,
   })
   provider: ProviderType;
 

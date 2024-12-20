@@ -191,18 +191,23 @@ export class BaseRepository<T extends IBaseEntity>
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-
+  
     try {
+      this.logger.debug('Starting transaction', 'BaseRepository');
       const result = await operation(queryRunner);
       await queryRunner.commitTransaction();
+      this.logger.debug('Transaction committed', 'BaseRepository', { result });
       return result;
     } catch (error) {
+      this.logger.error('Transaction failed', 'BaseRepository', { error });
       await queryRunner.rollbackTransaction();
-      this.handleError('Transaction failed', error);
+      throw new InternalServerErrorException('Transaction failed. Please try again later.');
     } finally {
       await queryRunner.release();
+      this.logger.debug('Transaction completed', 'BaseRepository');
     }
   }
+  
 
   protected handleError(
     message: string,

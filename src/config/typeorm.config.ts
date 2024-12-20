@@ -4,18 +4,20 @@ import { DatabaseLoggerService } from 'src/core/services/database-logger.service
 import { LoggerService } from 'src/common/services/logger.service';
 import * as path from 'path';
 
-export const typeormConfig = (
-  configService: ConfigService,
-  databaseLoggerService: DatabaseLoggerService,
-  logger: LoggerService,
-): TypeOrmModuleOptions => {
-  const isProduction = configService.get<string>('NODE_ENV') === 'production';
-  const sslEnabled = configService.get<boolean>('DB_SSL', false);
-  const sslOptions = sslEnabled ? { rejectUnauthorized: false } : false;
+const REQUIRED_CONFIG_KEYS: Record<string, string> = {
+  DB_HOST: 'string',
+  DB_USERNAME: 'string',
+  DB_PASSWORD: 'string',
+  DB_NAME: 'string',
+};
 
-  const requiredConfig = ['DB_HOST', 'DB_USERNAME', 'DB_PASSWORD', 'DB_NAME'];
-  for (const key of requiredConfig) {
-    if (!configService.get<string>(key)) {
+const validateConfig = (
+  configService: ConfigService,
+  logger: LoggerService,
+): void => {
+  for (const [key, type] of Object.entries(REQUIRED_CONFIG_KEYS)) {
+    const value = configService.get<string>(key);
+    if (!value) {
       logger.error(
         `Database configuration error: ${key} is missing`,
         'TypeOrmConfig',
@@ -23,25 +25,38 @@ export const typeormConfig = (
       );
       throw new Error(`Database configuration error: ${key} is missing`);
     }
+    if (typeof value !== type) {
+      logger.error(
+        `Database configuration error: ${key} should be of type ${type}`,
+        'TypeOrmConfig',
+        { configKey: key, expectedType: type, actualType: typeof value },
+      );
+      throw new Error(
+        `Database configuration error: ${key} should be of type ${type}`,
+      );
+    }
   }
+};
 
-  const loggingOptions =
-    databaseLoggerService.determineDatabaseLoggingOptions();
+export const typeormConfig = (
+  configService: ConfigService,
+  databaseLoggerService: DatabaseLoggerService,
+  logger: LoggerService,
+): TypeOrmModuleOptions => {
+  const isProduction = configService.get<string>('NODE_ENV') === 'production';
+
+  const sslEnabled = configService.get<string>('DB_SSL', 'false') === 'true';
+  const sslOptions = sslEnabled ? { rejectUnauthorized: false } : undefined;
+
+  validateConfig(configService, logger);
+
   const dbHost = configService.get<string>('DB_HOST');
-
   logger.log(`Attempting to connect to database at ${dbHost}`, 'TypeOrmConfig');
 
   const entities = [
-    path.resolve(
-      __dirname,
-      '..',
-      'modules',
-      '**',
-      'entities',
-      '*.entity.{ts,js}',
-    ),
+    path.join(__dirname, '..', 'modules', '**', 'entities', '*.{ts,js}'),
   ];
-  const migrations = [path.resolve(__dirname, '..', 'migrations', '*.{ts,js}')];
+  const migrations = [path.join(__dirname, '..', 'migrations', '*.{ts,js}')];
 
   const config: TypeOrmModuleOptions = {
     type: 'postgres',
@@ -53,11 +68,14 @@ export const typeormConfig = (
     entities,
     migrations,
     autoLoadEntities: true,
-    synchronize: false,
-    ssl: sslOptions,
-    logging: loggingOptions,
-    retryAttempts: 5,
-    retryDelay: 3000,
+    synchronize: configService.get<boolean>('TYPEORM_SYNC', false),
+    ...(sslEnabled && { ssl: sslOptions }),
+    logger: databaseLoggerService,
+    logging: configService.get<boolean>('DB_LOGGING', false)
+      ? ['query', 'error']
+      : false,
+    retryAttempts: configService.get<number>('DB_RETRY_ATTEMPTS', 5),
+    retryDelay: configService.get<number>('DB_RETRY_DELAY', 3000),
     maxQueryExecutionTime: configService.get<number>('DB_QUERY_TIMEOUT', 5000),
     poolSize: configService.get<number>('DB_POOL_SIZE', 10),
     extra: {
@@ -69,22 +87,19 @@ export const typeormConfig = (
     },
   };
 
-  // Log Configuration Details
   logger.log('TypeORM configuration initialized', 'TypeOrmConfig', {
     isProduction,
     sslEnabled,
     dbHost,
-    loggingEnabled: !!loggingOptions,
-    loggingOptions: loggingOptions === 'all' ? 'all' : loggingOptions,
     entities,
+    migrations,
   });
 
-  // Log full configuration in development
   if (!isProduction) {
+    const { password, ...safeConfig } = config;
     logger.debug('Detailed TypeORM configuration', 'TypeOrmConfig', {
-      ...config,
+      ...safeConfig,
       password: '[REDACTED]',
-      entities,
     });
   }
 

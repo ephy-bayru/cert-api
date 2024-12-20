@@ -37,7 +37,7 @@ import { TransformInterceptor } from '@common/interceptors/transform.interceptor
 import { GlobalExceptionFilter } from '@common/filters/global-exception.filter';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { User } from '@modules/users/entities/user.entity';
-import { UserRole } from '@modules/users/entities/user-role.entity';
+import { UserRole } from '@modules/users/entities/user-role.enum';
 import { OrganizationService } from '../services/organizations.service';
 import { OrganizationUserService } from '../services/organization-users.service';
 
