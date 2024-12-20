@@ -1,4 +1,4 @@
 export enum ProviderType {
-  Local = 'local',
+  local = 'local',
   jwt = 'jwt',
 }

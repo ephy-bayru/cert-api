@@ -58,7 +58,7 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({
     enum: ProviderType,
-    example: ProviderType.Local,
+    example: ProviderType.local,
     description: 'Authentication provider type',
   })
   @IsOptional()

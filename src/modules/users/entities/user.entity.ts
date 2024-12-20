@@ -81,7 +81,7 @@ export class User {
   @Column({
     type: 'enum',
     enum: ProviderType,
-    default: ProviderType.Local,
+    default: ProviderType.local,
   })
   provider: ProviderType;
 

@@ -44,7 +44,7 @@ export class UserResponseDto {
 
   @ApiProperty({
     enum: ProviderType,
-    example: ProviderType.Local,
+    example: ProviderType.local,
     description: 'Authentication provider type',
   })
   provider: ProviderType;
