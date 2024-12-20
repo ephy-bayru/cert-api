@@ -14,7 +14,7 @@ const REQUIRED_CONFIG_KEYS: Record<string, string> = {
 const validateConfig = (
   configService: ConfigService,
   logger: LoggerService,
-) => {
+): void => {
   for (const [key, type] of Object.entries(REQUIRED_CONFIG_KEYS)) {
     const value = configService.get<string>(key);
     if (!value) {
@@ -45,12 +45,9 @@ export const typeormConfig = (
 ): TypeOrmModuleOptions => {
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
-  // Convert DB_SSL to boolean
   const sslEnabled = configService.get<string>('DB_SSL', 'false') === 'true';
-  // Only set SSL options if enabled
   const sslOptions = sslEnabled ? { rejectUnauthorized: false } : undefined;
 
-  // Validate required configuration
   validateConfig(configService, logger);
 
   const dbHost = configService.get<string>('DB_HOST');
@@ -71,11 +68,12 @@ export const typeormConfig = (
     entities,
     migrations,
     autoLoadEntities: true,
-    synchronize: false,
-    // Add SSL only if enabled
+    synchronize: configService.get<boolean>('TYPEORM_SYNC', false),
     ...(sslEnabled && { ssl: sslOptions }),
     logger: databaseLoggerService,
-    logging: false,
+    logging: configService.get<boolean>('DB_LOGGING', false)
+      ? ['query', 'error']
+      : false,
     retryAttempts: configService.get<number>('DB_RETRY_ATTEMPTS', 5),
     retryDelay: configService.get<number>('DB_RETRY_DELAY', 3000),
     maxQueryExecutionTime: configService.get<number>('DB_QUERY_TIMEOUT', 5000),
@@ -89,7 +87,6 @@ export const typeormConfig = (
     },
   };
 
-  // Log Configuration Details
   logger.log('TypeORM configuration initialized', 'TypeOrmConfig', {
     isProduction,
     sslEnabled,
@@ -98,7 +95,6 @@ export const typeormConfig = (
     migrations,
   });
 
-  // Log full configuration in development without password
   if (!isProduction) {
     const { password, ...safeConfig } = config;
     logger.debug('Detailed TypeORM configuration', 'TypeOrmConfig', {

@@ -16,8 +16,8 @@ import {
   PaginationOptions,
   PaginationResult,
 } from 'src/common/interfaces/IPagination';
-import { UserStatus } from '../entities/user-status.entity';
-import { UserRole } from '../entities/user-role.entity';
+import { UserStatus } from '../entities/user-status.enum';
+import { UserRole } from '../entities/user-role.enum';
 
 @Injectable()
 export class UsersRepository extends BaseRepository<User> {

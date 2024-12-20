@@ -18,7 +18,7 @@ import { Response } from 'express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuditLogService } from '../services/audit-log.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { UserRole } from 'src/modules/users/entities/user-role.entity';
+import { UserRole } from '@modules/users/entities/user-role.enum';
 import { AuditLog } from '../entities/audit-log.entity';
 import { GetAuditLogsDto } from '../dtos/get-audit-logs.dto';
 import { PaginationResult } from 'src/common/interfaces/IPagination';

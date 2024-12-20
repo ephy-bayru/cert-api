@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserRole } from '../entities/user-role.entity';
-import { UserStatus } from '../entities/user-status.entity';
+import { UserRole } from '../entities/user-role.enum';
+import { UserStatus } from '../entities/user-status.enum';
 import { ProviderType } from '../enums/provider-types';
 
 export class UserResponseDto {

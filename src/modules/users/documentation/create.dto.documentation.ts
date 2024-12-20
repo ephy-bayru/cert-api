@@ -10,7 +10,7 @@ import {
   Length,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { UserStatus } from '../entities/user-status.entity';
+import { UserStatus } from '../entities/user-status.enum';
 import { ProviderType } from '../enums/provider-types';
 
 export class CreateUserDto {

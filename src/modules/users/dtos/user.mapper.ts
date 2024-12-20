@@ -3,7 +3,7 @@ import { UserResponseDto } from './user-response.dto';
 import { User } from '../entities/user.entity';
 import { AuthResponseDto } from './auth-response.dto';
 import { ConfigService } from '@nestjs/config';
-import { UserStatus } from '../entities/user-status.entity';
+import { UserStatus } from '../entities/user-status.enum';
 
 @Injectable()
 export class UserMapper {

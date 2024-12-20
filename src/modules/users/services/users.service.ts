@@ -19,9 +19,9 @@ import {
   PaginationOptions,
   PaginationResult,
 } from 'src/common/interfaces/IPagination';
-import { UserStatus } from '../entities/user-status.entity';
+import { UserStatus } from '../entities/user-status.enum';
 import { Address } from '../entities/address.entity';
-import { UserRole } from '../entities/user-role.entity';
+import { UserRole } from '../entities/user-role.enum';
 
 @Injectable()
 export class UsersService {

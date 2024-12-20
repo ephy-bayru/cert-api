@@ -28,16 +28,20 @@ export class CustomHealthIndicator extends HealthIndicator {
     const serviceHealth = await this.checkServiceHealth();
     const memoryUsageHealthy = this.checkMemoryUsage();
     const cpuLoadHealthy = this.checkCpuLoad();
+    const dataSyncHealthy = await this.checkDataSync();
 
-    const isHealthy = serviceHealth && memoryUsageHealthy && cpuLoadHealthy;
+    const isHealthy =
+      serviceHealth && memoryUsageHealthy && cpuLoadHealthy && dataSyncHealthy;
     const healthDetails = {
       serviceHealth,
       memoryUsage: this.getMemoryUsageDetails(),
       cpuLoad: this.getCpuLoadDetails(),
+      dataSync: dataSyncHealthy,
       warnings: this.generateWarnings(
         serviceHealth,
         memoryUsageHealthy,
         cpuLoadHealthy,
+        dataSyncHealthy,
       ),
     };
 
@@ -46,18 +50,35 @@ export class CustomHealthIndicator extends HealthIndicator {
     return result;
   }
 
-  /**
-   * Checks if the underlying service (or system dependency) is healthy.
-   * Replace the logic in this method with an actual service health check.
-   */
   private async checkServiceHealth(): Promise<boolean> {
     try {
       // Replace with actual service check logic
-      // For now, we assume it's always healthy
       return true;
     } catch (error) {
       this.logger.error(
         'Custom service health check failed',
+        'CustomHealthIndicator',
+        { error },
+      );
+      return false;
+    }
+  }
+
+  private async checkDataSync(): Promise<boolean> {
+    try {
+      // Replace with your actual data synchronization check logic
+      // Example: Call a service or check specific conditions
+      const isDataInSync = true; // Example placeholder
+      if (!isDataInSync) {
+        this.logger.warn(
+          'Data synchronization issue detected',
+          'CustomHealthIndicator',
+        );
+      }
+      return isDataInSync;
+    } catch (error) {
+      this.logger.error(
+        'Data synchronization check failed',
         'CustomHealthIndicator',
         { error },
       );
@@ -71,9 +92,7 @@ export class CustomHealthIndicator extends HealthIndicator {
       this.logger.warn(
         'Memory usage exceeded the threshold',
         'CustomHealthIndicator',
-        {
-          freeMemoryRatio,
-        },
+        { freeMemoryRatio },
       );
       return false;
     }
@@ -107,11 +126,13 @@ export class CustomHealthIndicator extends HealthIndicator {
     serviceHealth: boolean,
     memoryHealthy: boolean,
     cpuLoadHealthy: boolean,
+    dataSyncHealthy: boolean,
   ): string[] {
     const warnings: string[] = [];
     if (!serviceHealth) warnings.push('Service is down');
     if (!memoryHealthy) warnings.push('Memory usage is high');
     if (!cpuLoadHealthy) warnings.push('CPU load is high');
+    if (!dataSyncHealthy) warnings.push('Data synchronization issues detected');
     return warnings;
   }
 

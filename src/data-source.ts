@@ -25,7 +25,9 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME,
   entities: entitiesPaths,
   migrations: [path.join(__dirname, 'migrations', '*.{ts,js}')],
-  synchronize: false,
-  logging: ['query', 'error'],
+  synchronize: process.env.TYPEORM_SYNC === 'true',
+  logging: ['error', 'warn', 'query'],
   ...(sslEnabled && { ssl: { rejectUnauthorized: false } }),
+  // retryAttempts: parseInt(process.env.DB_RETRY_ATTEMPTS ?? '5', 10),
+  // retryDelay: parseInt(process.env.DB_RETRY_DELAY ?? '3000', 10),
 });

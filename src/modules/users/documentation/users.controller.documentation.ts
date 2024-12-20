@@ -2,7 +2,7 @@ import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { UserResponseDto } from '../dtos/user-response.dto';
 import { HttpStatus } from '@nestjs/common';
-import { UserStatus } from '../entities/user-status.entity';
+import { UserStatus } from '../entities/user-status.enum';
 
 export function FindOneByIdDocs() {
   return applyDecorators(

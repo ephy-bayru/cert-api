@@ -1,5 +1,5 @@
-import { UserStatus } from '../entities/user-status.entity';
-import { UserRole } from '../entities/user-role.entity';
+import { UserStatus } from '../entities/user-status.enum';
+import { UserRole } from '../entities/user-role.enum';
 import { ProviderType } from '../enums/provider-types';
 import { AddressDto } from './address.dto';
 
