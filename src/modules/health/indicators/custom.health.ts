@@ -52,7 +52,7 @@ export class CustomHealthIndicator extends HealthIndicator {
 
   private async checkServiceHealth(): Promise<boolean> {
     try {
-      // Replace with actual service check logic
+      // TODO // Replace with actual service check logic
       return true;
     } catch (error) {
       this.logger.error(
@@ -66,8 +66,7 @@ export class CustomHealthIndicator extends HealthIndicator {
 
   private async checkDataSync(): Promise<boolean> {
     try {
-      // Replace with your actual data synchronization check logic
-      // Example: Call a service or check specific conditions
+      // TODO Replace with actual data synchronization check logic
       const isDataInSync = true; // Example placeholder
       if (!isDataInSync) {
         this.logger.warn(
