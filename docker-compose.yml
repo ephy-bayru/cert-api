@@ -1,65 +1,54 @@
 services:
+  db:
+    image: postgres:17.2
+    environment:
+      POSTGRES_USER: certuser
+      POSTGRES_PASSWORD: certpass
+      POSTGRES_DB: cert-db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U certuser']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    
   app:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        USE_HTTPS: ${USE_HTTPS}
+        USE_HTTPS: ${USE_HTTPS:-false}
     image: cert-api:latest
     ports:
       - '3000:3000'
     env_file:
       - .env
     environment:
-      USE_HTTPS: ${USE_HTTPS}
       NODE_ENV: production
-    volumes:
-      - .:/usr/src/app:delegated
-      - /usr/src/app/node_modules
-      - ./logs:/usr/src/app/logs
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: certuser
+      DB_PASSWORD: certpass
+      DB_NAME: cert-db
+      PORT: 3000
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
     healthcheck:
       test: ['CMD-SHELL', 'curl -f http://localhost:3000/health || exit 1']
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
       start_period: 30s
-    restart: unless-stopped
-    init: true
-    stop_grace_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: '512M'
-      restart_policy:
-        condition: on-failure
-
-  db:
-    image: postgres:17.2
-    env_file:
-      - .env
-    environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - '5432:5432'
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME}']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    stop_grace_period: 30s
 
 networks:
   default:
-    name: project_network
+    name: cert_network
     driver: bridge
 
 volumes:
