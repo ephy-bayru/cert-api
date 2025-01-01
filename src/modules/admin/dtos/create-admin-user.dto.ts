@@ -1,3 +1,4 @@
+import { GlobalRole } from '@common/enums/global-role.enum';
 import {
   IsEmail,
   IsNotEmpty,
@@ -6,7 +7,6 @@ import {
   IsPhoneNumber,
   Length,
 } from 'class-validator';
-import { AdminRole } from '../entities/admin-user.entity';
 
 export class CreateAdminUserDto {
   @IsEmail({}, { message: 'Invalid email address' })
@@ -30,6 +30,6 @@ export class CreateAdminUserDto {
   phoneNumber?: string;
 
   @IsOptional()
-  @IsEnum(AdminRole, { message: 'Invalid role' })
-  role?: AdminRole;
+  @IsEnum(GlobalRole, { message: 'Invalid role' })
+  role?: GlobalRole;
 }

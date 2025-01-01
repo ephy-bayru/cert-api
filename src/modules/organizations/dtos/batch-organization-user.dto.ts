@@ -14,7 +14,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { OrganizationUserRole } from '../entities/organization-user-role.enum';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 // DTO for batch creating users
 class BatchCreateUserItem {
@@ -40,11 +40,11 @@ class BatchCreateUserItem {
   lastName: string;
 
   @ApiProperty({
-    enum: OrganizationUserRole,
+    enum: GlobalRole,
     description: 'Role to assign to the user',
   })
-  @IsEnum(OrganizationUserRole)
-  role: OrganizationUserRole;
+  @IsEnum(GlobalRole)
+  role: GlobalRole;
 
   @ApiPropertyOptional({ description: 'Department the user belongs to' })
   @IsString()
@@ -98,11 +98,11 @@ class BatchUpdateRoleItem {
   userId: string;
 
   @ApiProperty({
-    enum: OrganizationUserRole,
+    enum: GlobalRole,
     description: 'New role to assign',
   })
-  @IsEnum(OrganizationUserRole)
-  newRole: OrganizationUserRole;
+  @IsEnum(GlobalRole)
+  newRole: GlobalRole;
 }
 
 export class BatchUpdateOrganizationUserRolesDto {

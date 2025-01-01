@@ -14,6 +14,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { OrganizationsModule } from '@modules/organizations/organizations.module';
 import { AdminModule } from '@modules/admin/admin.module';
+import { AuthModule } from '@modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { AdminModule } from '@modules/admin/admin.module';
     OrganizationsModule,
     AdminModule,
     DocumentsModule,
+    AuthModule,
 
     // Supporting Modules
     HealthModule,

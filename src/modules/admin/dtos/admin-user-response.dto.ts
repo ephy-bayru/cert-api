@@ -1,4 +1,4 @@
-import { AdminRole } from '../entities/admin-user.entity';
+import { GlobalRole } from "@common/enums/global-role.enum";
 
 export class AdminUserResponseDto {
   id: string;
@@ -6,7 +6,7 @@ export class AdminUserResponseDto {
   firstName?: string;
   lastName?: string;
   phoneNumber?: string;
-  role: AdminRole;
+  role: GlobalRole;
   isActive: boolean;
   isLocked: boolean;
   createdAt: Date;

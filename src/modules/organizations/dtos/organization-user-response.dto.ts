@@ -1,6 +1,6 @@
 import { Exclude, Expose } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { OrganizationUserRole } from '../entities/organization-user-role.enum';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 export class OrganizationUserResponseDto {
   @ApiProperty()
@@ -43,7 +43,7 @@ export class OrganizationUserResponseDto {
 
   // Role and Status
   @ApiProperty()
-  role: OrganizationUserRole;
+  role: GlobalRole;
 
   @ApiProperty()
   isActive: boolean;

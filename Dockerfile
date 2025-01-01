@@ -68,4 +68,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 # Final command to run your app
 # To name the resulting image 'cert-api', run: 
 # docker build -t cert-api .
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]

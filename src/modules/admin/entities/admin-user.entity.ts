@@ -8,12 +8,7 @@ import {
   VersionColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
-
-export enum AdminRole {
-  SUPER_ADMIN = 'SUPER_ADMIN',
-  ADMIN = 'ADMIN',
-  SUPPORT = 'SUPPORT',
-}
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 @Entity('admin_users')
 export class AdminUser {
@@ -23,7 +18,7 @@ export class AdminUser {
   @Column({ length: 150, unique: true })
   email: string;
 
-  @Column({ select: false })
+  @Column()
   @Exclude({ toPlainOnly: true })
   password: string;
 
@@ -38,10 +33,10 @@ export class AdminUser {
 
   @Column({
     type: 'enum',
-    enum: AdminRole,
-    default: AdminRole.ADMIN,
+    enum: GlobalRole,
+    default: GlobalRole.PLATFORM_ADMIN,
   })
-  role: AdminRole;
+  role: GlobalRole;
 
   @Column({ default: false })
   isActive: boolean;
@@ -72,4 +67,7 @@ export class AdminUser {
 
   @Column({ type: 'uuid', nullable: true })
   deletedBy?: string;
+
+  @Column({ default: false })
+  twoFactorEnabled: boolean;
 }

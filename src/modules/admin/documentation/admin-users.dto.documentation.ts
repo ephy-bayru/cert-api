@@ -1,3 +1,4 @@
+import { GlobalRole } from '@common/enums/global-role.enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
@@ -9,7 +10,6 @@ import {
   Matches,
   MaxLength,
 } from 'class-validator';
-import { AdminRole } from '../entities/admin-user.entity';
 
 export class CreateAdminUserDto {
   @ApiProperty({
@@ -70,12 +70,12 @@ export class CreateAdminUserDto {
 
   @ApiPropertyOptional({
     description: 'Role assigned to the admin user',
-    enum: AdminRole,
-    example: AdminRole.ADMIN,
+    enum: GlobalRole,
+    example: GlobalRole.PLATFORM_ADMIN,
   })
   @IsOptional()
-  @IsEnum(AdminRole, { message: 'Role must be a valid AdminRole' })
-  role?: AdminRole;
+  @IsEnum(GlobalRole, { message: 'Role must be a valid AdminRole' })
+  role?: GlobalRole;
 }
 
 export class UpdateAdminUserDto {
@@ -137,10 +137,10 @@ export class UpdateAdminUserDto {
 
   @ApiPropertyOptional({
     description: 'Role assigned to the admin user',
-    enum: AdminRole,
-    example: AdminRole.SUPPORT,
+    enum: GlobalRole,
+    example: GlobalRole.SUPPORT,
   })
   @IsOptional()
-  @IsEnum(AdminRole, { message: 'Role must be a valid AdminRole' })
-  role?: AdminRole;
+  @IsEnum(GlobalRole, { message: 'Role must be a valid AdminRole' })
+  role?: GlobalRole;
 }

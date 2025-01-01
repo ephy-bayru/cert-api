@@ -21,7 +21,7 @@ import {
 } from 'src/common/interfaces/IPagination';
 import { UserStatus } from '../entities/user-status.enum';
 import { Address } from '../entities/address.entity';
-import { UserRole } from '../entities/user-role.enum';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 @Injectable()
 export class UsersService {
@@ -127,9 +127,13 @@ export class UsersService {
       // Prevent non-admin users from changing role or status
       if (
         (updateUserDto.role || updateUserDto.status) &&
-        currentUser.role !== UserRole.ADMIN
+        ![GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN].includes(
+          currentUser.role,
+        )
       ) {
-        throw new ForbiddenException('Only admins can change role or status');
+        throw new ForbiddenException(
+          'Only platform or super admins can change role or status',
+        );
       }
 
       if (updateUserDto.password) {
@@ -191,8 +195,13 @@ export class UsersService {
     status: UserStatus,
     currentUser: User,
   ): Promise<UserResponseDto> {
-    if (currentUser.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only admins can change user status');
+    if (
+      currentUser.role !== GlobalRole.PLATFORM_ADMIN &&
+      currentUser.role !== GlobalRole.ORG_SUPER_ADMIN
+    ) {
+      throw new ForbiddenException(
+        'Only platform or org super admins can do that',
+      );
     }
 
     const user = await this.usersRepository.getUserById(id);

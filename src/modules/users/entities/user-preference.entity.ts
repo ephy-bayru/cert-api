@@ -3,7 +3,6 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToOne,
-  JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
 import { ThemePreference } from '../enums/theme-preference.enum';
@@ -14,7 +13,6 @@ export class UserPreferences {
   id: string;
 
   @OneToOne(() => User, (user) => user.preferences)
-  @JoinColumn()
   user: User;
 
   @Column({ default: true })

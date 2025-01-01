@@ -1,5 +1,5 @@
+import { GlobalRole } from '@common/enums/global-role.enum';
 import { ApiProperty } from '@nestjs/swagger';
-import { AdminRole } from '../entities/admin-user.entity';
 
 export class AdminUserResponseDto {
   @ApiProperty({
@@ -39,10 +39,10 @@ export class AdminUserResponseDto {
 
   @ApiProperty({
     description: 'Role assigned to the admin user',
-    enum: AdminRole,
-    example: AdminRole.ADMIN,
+    enum: GlobalRole,
+    example: GlobalRole.PLATFORM_ADMIN,
   })
-  role: AdminRole;
+  role: GlobalRole;
 
   @ApiProperty({
     description: 'Indicates whether the admin user is active',

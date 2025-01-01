@@ -3,7 +3,6 @@ import {
   ConflictException,
   NotFoundException,
   InternalServerErrorException,
-  BadRequestException,
 } from '@nestjs/common';
 import {
   DataSource,
@@ -18,8 +17,6 @@ import { LoggerService } from '@common/services/logger.service';
 import { Organization } from '../entities/organization.entity';
 import { OrganizationUser } from '../entities/organization-user.entity';
 import { OrganizationStatus } from '../entities/organization-status.enum';
-import { OrganizationUserRole } from '../entities/organization-user-role.enum';
-import { CreateOrganizationDto } from '../dtos/create-organization.dto';
 import { UpdateOrganizationDto } from '../dtos/update-organization.dto';
 import {
   PaginationOptions,
@@ -28,6 +25,8 @@ import {
 } from '@common/interfaces/IPagination';
 import * as bcrypt from 'bcrypt';
 import { Address } from '@modules/users/entities/address.entity';
+import { CreateOrganizationWithAdminDto } from '../dtos/create-organization-with-admin.dto';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 @Injectable()
 export class OrganizationsRepository extends BaseRepository<Organization> {
@@ -41,78 +40,102 @@ export class OrganizationsRepository extends BaseRepository<Organization> {
   // #region Core Organization Management Methods
 
   /**
-   * Creates a new organization with an initial admin user
+   * Creates a new organization with an initial SUPER_ADMIN user
    * Access: Public - System Admin
    * Priority: High
    */
   async createOrganizationWithAdmin(
-    createOrganizationDto: CreateOrganizationDto,
-    adminEmail: string,
-    adminPassword: string,
+    createOrganizationDto: CreateOrganizationWithAdminDto,
     createdById: string,
   ): Promise<Organization> {
-    const queryRunner = this.dataSource.createQueryRunner();
+    const queryRunner: QueryRunner = this.dataSource.createQueryRunner();
+
+    this.logger.log(
+      'Starting transaction for creating organization and initial SUPER_ADMIN user.',
+    );
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      const { name } = createOrganizationDto;
+      const {
+        name,
+        adminEmail,
+        adminPassword,
+        adminFirstName,
+        adminLastName,
+        adminPhoneNumber,
+        adminPreferences,
+      } = createOrganizationDto;
 
       // Validate uniqueness
+      this.logger.log(
+        'Validating organization name and admin email uniqueness.',
+      );
       await this.validateOrganizationUniqueness(queryRunner, name, adminEmail);
 
       // Create organization entity
+      this.logger.log('Creating organization entity.');
       const organization = queryRunner.manager.create(Organization, {
         ...createOrganizationDto,
-        status: OrganizationStatus.PENDING_APPROVAL,
+        status:
+          createOrganizationDto.status || OrganizationStatus.PENDING_APPROVAL,
         createdBy: createdById,
       });
 
       // Save organization
+      this.logger.log('Saving organization to the database.');
       await queryRunner.manager.save(Organization, organization);
+      this.logger.log(`Organization saved with ID: ${organization.id}`);
 
-      // Create initial admin user
+      // Create initial SUPER_ADMIN user
+      this.logger.log(
+        `Creating initial SUPER_ADMIN user with email: ${adminEmail}`,
+      );
       await this.createInitialAdminUser(queryRunner, {
         organizationId: organization.id,
         email: adminEmail,
         password: adminPassword,
+        firstName: adminFirstName,
+        lastName: adminLastName,
+        phoneNumber: adminPhoneNumber,
+        preferences: adminPreferences,
         createdById,
       });
+      this.logger.log('Initial SUPER_ADMIN user created successfully.');
 
       // Commit transaction
       await queryRunner.commitTransaction();
+      this.logger.log('Transaction committed successfully.');
 
       // Log success
-      this.logger.info(
-        `Organization '${organization.name}' created with initial admin '${adminEmail}'`,
-        'OrganizationsRepository',
-        { organizationId: organization.id, createdById },
+      this.logger.log(
+        `Organization '${organization.name}' created with initial SUPER_ADMIN '${adminEmail}'`,
       );
 
       return organization;
     } catch (error) {
       // Rollback transaction
       await queryRunner.rollbackTransaction();
-
-      // Log error
       this.logger.error(
-        'Error creating organization with admin',
-        'OrganizationsRepository',
-        { error, adminEmail, createdById },
+        'Transaction rolled back due to an error.',
+        error.stack,
       );
 
+      // Log specific errors
       if (error instanceof ConflictException) {
         throw error;
-      } else {
-        throw new InternalServerErrorException('Failed to create organization');
       }
+
+      throw new InternalServerErrorException(
+        'Failed to create organization with SUPER_ADMIN.',
+      );
     } finally {
       // Release query runner
       await queryRunner.release();
+      this.logger.log('QueryRunner released.');
     }
   }
-
   /**
    * Activates a pending organization and its admin users
    * Access: Restricted - System Admin Only
@@ -839,45 +862,73 @@ export class OrganizationsRepository extends BaseRepository<Organization> {
   // #region Utility Methods
 
   /**
-   * Creates initial admin user for new organization
-   * Access: Private - Internal Use
+   * Creates the initial SUPER_ADMIN user for the organization.
    */
   private async createInitialAdminUser(
     queryRunner: QueryRunner,
-    params: {
+    adminUserData: {
       organizationId: string;
       email: string;
       password: string;
+      firstName?: string;
+      lastName?: string;
+      phoneNumber?: string;
+      preferences?: any;
       createdById: string;
     },
-  ): Promise<OrganizationUser> {
-    const { organizationId, email, password, createdById } = params;
+  ): Promise<void> {
+    const {
+      organizationId,
+      email,
+      password,
+      firstName,
+      lastName,
+      phoneNumber,
+      preferences,
+      createdById,
+    } = adminUserData;
 
-    // Hash password securely
+    this.logger.log(`Hashing password for SUPER_ADMIN user '${email}'.`);
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create admin user entity
+    // Generate userName from email (e.g., 'admin' from 'admin@acme.com')
+    const userNameBase = email.split('@')[0];
+    let userName = userNameBase;
+    let counter = 1;
+
+    // Check for existing userName and append a counter if necessary
+    while (true) {
+      const existingUser = await queryRunner.manager.findOne(OrganizationUser, {
+        where: { userName },
+      });
+      if (!existingUser) break;
+      userName = `${userNameBase}${counter}`;
+      counter++;
+    }
+
+    this.logger.log(
+      `Creating SUPER_ADMIN user entity for '${email}' with userName '${userName}'.`,
+    );
     const adminUser = queryRunner.manager.create(OrganizationUser, {
       organizationId,
       email,
+      userName, // set userName
       password: hashedPassword,
-      role: OrganizationUserRole.SUPER_ADMIN,
+      role: GlobalRole.PLATFORM_ADMIN,
       isActive: true,
       isEmailVerified: false,
+      firstName: firstName || '',
+      lastName: lastName || '',
+      phoneNumber: phoneNumber || '',
+      preferences: preferences || {},
       createdBy: createdById,
     });
 
-    // Save admin user
+    this.logger.log(`Saving SUPER_ADMIN user '${email}' to the database.`);
     await queryRunner.manager.save(OrganizationUser, adminUser);
-
-    // Log admin user creation
-    this.logger.info(
-      `Admin user '${email}' created for organization '${organizationId}'`,
-      'OrganizationsRepository',
-      { userId: adminUser.id, organizationId },
+    this.logger.log(
+      `SUPER_ADMIN user '${email}' saved with ID: ${adminUser.id}`,
     );
-
-    return adminUser;
   }
 
   // #endregion

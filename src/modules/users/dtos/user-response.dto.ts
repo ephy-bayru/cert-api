@@ -1,5 +1,5 @@
+import { GlobalRole } from '@common/enums/global-role.enum';
 import { UserStatus } from '../entities/user-status.enum';
-import { UserRole } from '../entities/user-role.enum';
 import { ProviderType } from '../enums/provider-types';
 import { AddressDto } from './address.dto';
 
@@ -9,7 +9,7 @@ export class UserResponseDto {
   userName: string;
   fullName: string;
   isActive: boolean;
-  role: UserRole;
+  role: GlobalRole;
   status: UserStatus;
   firstName: string;
   lastName: string;

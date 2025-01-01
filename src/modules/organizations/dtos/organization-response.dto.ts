@@ -49,12 +49,12 @@ export class OrganizationResponseDto {
     certifications?: string[];
   };
 
-  @ApiProperty()
-  settings: {
-    requireTwoFactorAuth: boolean;
-    allowExternalVerifiers: boolean;
-    documentRetentionDays: number;
-    autoArchiveEnabled: boolean;
+  @ApiPropertyOptional({ description: 'Organization settings' })
+  settings?: {
+    requireTwoFactorAuth?: boolean;
+    allowExternalVerifiers?: boolean;
+    documentRetentionDays?: number;
+    autoArchiveEnabled?: boolean;
   };
 
   @ApiPropertyOptional()

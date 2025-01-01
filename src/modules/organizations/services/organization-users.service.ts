@@ -14,7 +14,7 @@ import {
 } from '@common/interfaces/IPagination';
 import { LoggerService } from '@common/services/logger.service';
 import { OrganizationUsersRepository } from '../repository/organization-users.repository';
-import { OrganizationUserRole } from '../entities/organization-user-role.enum';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 @Injectable()
 export class OrganizationUserService {
@@ -150,7 +150,7 @@ export class OrganizationUserService {
 
   async updateOrganizationUserRole(
     userId: string,
-    role: OrganizationUserRole,
+    role: GlobalRole,
     updatedById: string,
   ): Promise<void> {
     try {

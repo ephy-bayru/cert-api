@@ -17,6 +17,7 @@ import { OrganizationManagementService } from './services/organization-managemen
 import { AdminUsersController } from './controller/admin-users.controller';
 import { Organization } from '@modules/organizations/entities/organization.entity';
 import { User } from '@modules/users/entities/user.entity';
+import { SeedService } from './services/seed.service';
 
 // Controllers
 
@@ -31,6 +32,7 @@ import { User } from '@modules/users/entities/user.entity';
     AdminUsersRepository,
     UserManagementRepository,
     OrganizationManagementRepository,
+    SeedService,
     // Services
     AdminUsersService,
     UserManagementService,
@@ -44,6 +46,7 @@ import { User } from '@modules/users/entities/user.entity';
     AdminUsersRepository,
     UserManagementRepository,
     OrganizationManagementRepository,
+    SeedService
   ],
 })
 export class AdminModule {}

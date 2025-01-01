@@ -5,7 +5,7 @@ import {
   IsPhoneNumber,
   Length,
 } from 'class-validator';
-import { AdminRole } from '../entities/admin-user.entity';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 export class UpdateAdminUserDto {
   @IsOptional()
@@ -29,6 +29,6 @@ export class UpdateAdminUserDto {
   phoneNumber?: string;
 
   @IsOptional()
-  @IsEnum(AdminRole, { message: 'Invalid role' })
-  role?: AdminRole;
+  @IsEnum(GlobalRole, { message: 'Invalid role' })
+  role?: GlobalRole;
 }

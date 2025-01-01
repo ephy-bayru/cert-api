@@ -9,13 +9,11 @@ import {
   FindManyOptions,
   FindOptionsWhere,
   IsNull,
-  Not,
 } from 'typeorm';
 import { BaseRepository } from '@core/repository/base.repository';
 import { LoggerService } from '@common/services/logger.service';
 import { OrganizationUser } from '../entities/organization-user.entity';
 import { Organization } from '../entities/organization.entity';
-import { OrganizationUserRole } from '../entities/organization-user-role.enum';
 import { CreateOrganizationUserDto } from '../dtos/create-organization-user.dto';
 import { UpdateOrganizationUserDto } from '../dtos/update-organization-user.dto';
 import {
@@ -23,6 +21,7 @@ import {
   PaginationResult,
 } from '@common/interfaces/IPagination';
 import * as bcrypt from 'bcrypt';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 @Injectable()
 export class OrganizationUsersRepository extends BaseRepository<OrganizationUser> {
@@ -34,6 +33,46 @@ export class OrganizationUsersRepository extends BaseRepository<OrganizationUser
   }
 
   // #region Organization User Management Methods
+
+  /**
+   * Finds an organization user by email across all organizations.
+   * If your logic requires filtering by a specific organization,
+   * you can add an optional orgId parameter or adapt to your needs.
+   *
+   * @param email The email address to search for
+   * @returns OrganizationUser or null if not found
+   */
+  async findByEmail(email: string): Promise<OrganizationUser | null> {
+    try {
+      this.logger.debug(
+        `Searching for organization user by email: ${email}`,
+        'OrganizationUsersRepository',
+      );
+
+      const user = await this.repository.findOne({
+        where: { email, deletedAt: IsNull() },
+        relations: ['organization'],
+      });
+
+      if (!user) {
+        this.logger.debug(
+          `No organization user found with email: ${email}`,
+          'OrganizationUsersRepository',
+        );
+      }
+
+      return user;
+    } catch (error) {
+      this.logger.error(
+        'Error finding organization user by email',
+        'OrganizationUsersRepository',
+        { email, error },
+      );
+      throw new InternalServerErrorException(
+        'Failed to find organization user by email',
+      );
+    }
+  }
 
   /**
    * Creates a new user within an organization
@@ -321,7 +360,7 @@ export class OrganizationUsersRepository extends BaseRepository<OrganizationUser
    */
   async updateOrganizationUserRole(
     userId: string,
-    role: OrganizationUserRole,
+    role: GlobalRole,
     updatedById: string,
   ): Promise<void> {
     try {

@@ -185,6 +185,10 @@ export class BaseRepository<T extends IBaseEntity>
     }
   }
 
+  /**
+   * Properly wraps operations in a TypeORM transaction.
+   * We ensure `operation(queryRunner)` is awaited so it returns a real value, not a Promise.
+   */
   protected async transaction<R>(
     operation: (queryRunner: QueryRunner) => Promise<R>,
   ): Promise<R> {
@@ -193,18 +197,40 @@ export class BaseRepository<T extends IBaseEntity>
     await queryRunner.startTransaction();
   
     try {
-      this.logger.debug('Starting transaction', 'BaseRepository');
+      this.logger.debug(
+        'Starting transaction - creating queryRunner',
+        'BaseRepository',
+      );
+  
+      // Log to see if the operation was called
+      this.logger.debug(
+        'About to execute the operation callback inside the transaction',
+        'BaseRepository',
+      );
+  
       const result = await operation(queryRunner);
+  
+      // Log the result from the operation
+      this.logger.debug('Transaction operation result', 'BaseRepository', {
+        result,
+      });
+  
       await queryRunner.commitTransaction();
       this.logger.debug('Transaction committed', 'BaseRepository', { result });
+  
       return result;
     } catch (error) {
-      this.logger.error('Transaction failed', 'BaseRepository', { error });
+      // Log the raw error object (including driverError if present)
+      this.logger.error('Transaction failed with error', 'BaseRepository', {
+        error: this.formatFullError(error),
+      });
+  
       await queryRunner.rollbackTransaction();
+      this.logger.debug('Transaction rolled back', 'BaseRepository');
       throw new InternalServerErrorException('Transaction failed. Please try again later.');
     } finally {
       await queryRunner.release();
-      this.logger.debug('Transaction completed', 'BaseRepository');
+      this.logger.debug('Transaction completed, queryRunner released', 'BaseRepository');
     }
   }
   
@@ -214,12 +240,18 @@ export class BaseRepository<T extends IBaseEntity>
     error: unknown,
     context?: unknown,
   ): never {
-    this.logger.error(message, 'BaseRepository', { error, context });
+    // Attempt to format the error with any driverError
+    const fullError = this.formatFullError(error);
+  
+    this.logger.error(message, 'BaseRepository', { error: fullError, context });
+    
     if (error instanceof NotFoundException) {
       throw error;
     }
+    
     throw new InternalServerErrorException(message);
   }
+  
 
   private parseSortOption(
     sort: Array<{ field: keyof T; order: 'ASC' | 'DESC' }>,
@@ -257,4 +289,18 @@ export class BaseRepository<T extends IBaseEntity>
       queryBuilder.addOrderBy(`entity.${field}`, order);
     }
   }
+
+  private formatFullError(error: any): any {
+    if (!error || typeof error !== 'object') {
+      return error;
+    }
+    const formatted: any = { ...error };
+    // Some drivers nest the actual DB error in `error.driverError`.
+    // We copy that out if it exists:
+    if (error.driverError) {
+      formatted.driverError = { ...error.driverError };
+    }
+    return formatted;
+  }
+  
 }

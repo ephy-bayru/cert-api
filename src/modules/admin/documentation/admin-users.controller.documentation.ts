@@ -9,13 +9,13 @@ import {
 } from '@nestjs/swagger';
 import { CreateAdminUserDto } from '../dtos/create-admin-user.dto';
 import { UpdateAdminUserDto } from '../dtos/update-admin-user.dto';
-import { AdminRole } from '../entities/admin-user.entity';
 import { UpdateOrganizationDto } from '@modules/organizations/dtos/update-organization.dto';
 import { CreateOrganizationDto } from '@modules/organizations/dtos/create-organization.dto';
 import { OrganizationStatus } from '@modules/organizations/entities/organization-status.enum';
 import { UserStatus } from '@modules/users/entities/user-status.enum';
 import { CreateUserDto } from '@modules/users/dtos/create-user.dto';
 import { UpdateUserDto } from '@modules/users/dtos/update-user.dto';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 export function ListAdminUsersDocs() {
   return applyDecorators(
@@ -147,7 +147,7 @@ export function CreateAdminUserDocs() {
             password: 'StrongP@ss123',
             firstName: 'Jane',
             lastName: 'Smith',
-            role: AdminRole.SUPPORT,
+            role: GlobalRole.SUPPORT,
             phoneNumber: '+1234567890',
           },
         },
@@ -262,7 +262,7 @@ export function UpdateAdminUserDocs() {
         },
         'Role Update': {
           value: {
-            role: AdminRole.SUPPORT,
+            role: GlobalRole.SUPPORT,
           },
         },
         'Password Update': {

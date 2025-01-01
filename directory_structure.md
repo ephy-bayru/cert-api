@@ -12,6 +12,7 @@ cert-api/
     |-- directory_structure.md
     |-- docker-compose.yml
     |-- hardhat.config.ts
+    |-- init-db.sh
     |-- list_project_structure.py
     |-- logs/
         |-- app-2024-10-09.log
@@ -36,6 +37,12 @@ cert-api/
         |-- app-2024-12-11.log
         |-- app-2024-12-12.log
         |-- app-2024-12-19.log
+        |-- app-2024-12-20.log
+        |-- app-2024-12-27.log
+        |-- app-2024-12-28.log
+        |-- app-2024-12-29.log
+        |-- app-2024-12-30.log
+        |-- app-2025-01-01.log
     |-- nest-cli.json
     |-- package.json
     |-- src/
@@ -60,7 +67,6 @@ cert-api/
         |-- common/
             |-- common.module.ts
             |-- constants/
-                |-- role-hierarchy.constant.ts
             |-- decorators/
                 |-- current-user.decorator.ts
                 |-- public.decorator.ts
@@ -69,8 +75,8 @@ cert-api/
                 |-- user.decorator.ts
             |-- dtos/
                 |-- pagination-query.dto.ts
-            |-- enum/
-                |-- roles.enum.ts
+            |-- enums/
+                |-- global-role.enum.ts
             |-- filters/
                 |-- global-exception.filter.ts
             |-- interceptors/
@@ -105,6 +111,9 @@ cert-api/
         |-- data-source.ts
         |-- main.ts
         |-- migrations/
+            |-- 1735417695355-CreateSchema.ts
+            |-- 1735417915271-CreateSchema.ts
+            |-- 1735765192822-UpdateRoleTypeEnum.ts
         |-- modules/
             |-- admin/
                 |-- admin.module.ts
@@ -150,21 +159,24 @@ cert-api/
                 |-- services/
                     |-- audit-log.service.ts
             |-- auth/
-                |-- auth.controller.ts
                 |-- auth.module.ts
-                |-- auth.service.ts
                 |-- controller/
+                    |-- auth.controller.ts
+                |-- documentations/
+                    |-- auth.controller.documentation.ts
                 |-- dto/
-                    |-- auth-response.dto.ts
+                    |-- login-response.dto.ts
                     |-- login.dto.ts
-                    |-- register.dto.ts
                 |-- guards/
                     |-- jwt-auth.guard.ts
+                    |-- roles.guard.ts
+                    |-- twofa.guard.ts
                 |-- interfaces/
                     |-- jwt-payload.interface.ts
                 |-- repository/
                     |-- auth.repository.ts
                 |-- services/
+                    |-- auth.service.ts
                 |-- strategies/
                     |-- jwt.strategy.ts
             |-- documents/
@@ -322,8 +334,7 @@ cert-api/
                     |-- address.entity.ts
                     |-- login-history.entity.ts
                     |-- user-preference.entity.ts
-                    |-- user-role.entity.ts
-                    |-- user-status.entity.ts
+                    |-- user-status.enum.ts
                     |-- user.entity.ts
                 |-- enums/
                     |-- login-status.enum.ts

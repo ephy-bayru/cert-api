@@ -1,34 +1,59 @@
-import { IsString, IsOptional, IsBoolean, IsNumber } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsArray,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class OrganizationUserPermissionsDto {
-  @ApiPropertyOptional({ default: false })
+  @ApiPropertyOptional({
+    description: 'Can verify documents',
+    example: true,
+  })
   @IsBoolean()
   @IsOptional()
   canVerifyDocuments?: boolean;
 
-  @ApiPropertyOptional({ default: false })
+  @ApiPropertyOptional({
+    description: 'Can manage users',
+    example: true,
+  })
   @IsBoolean()
   @IsOptional()
   canManageUsers?: boolean;
 
-  @ApiPropertyOptional({ default: true })
+  @ApiPropertyOptional({
+    description: 'Can access documents',
+    example: true,
+  })
   @IsBoolean()
   @IsOptional()
   canAccessDocuments?: boolean;
 
-  @ApiPropertyOptional({ default: false })
+  @ApiPropertyOptional({
+    description: 'Can manage settings',
+    example: true,
+  })
   @IsBoolean()
   @IsOptional()
   canManageSettings?: boolean;
 
-  @ApiPropertyOptional()
-  @IsString({ each: true })
+  @ApiPropertyOptional({
+    description: 'Types of documents they can verify',
+    example: ['BUSINESS', 'LEGAL'],
+  })
+  @IsArray()
   @IsOptional()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
   documentTypes?: string[];
 
-  @ApiPropertyOptional()
-  @IsNumber()
+  @ApiPropertyOptional({
+    description: 'Daily verification limit',
+    example: 100,
+  })
   @IsOptional()
   verificationLimit?: number;
 }

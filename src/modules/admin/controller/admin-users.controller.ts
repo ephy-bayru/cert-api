@@ -13,34 +13,46 @@ import {
   UseFilters,
   UseInterceptors,
   ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
+
+import { ApiTags } from '@nestjs/swagger';
+
 import { AdminUsersService } from '../services/admin-users.service';
 import { UserManagementService } from '../services/user-management.service';
 import { OrganizationManagementService } from '../services/organization-management.service';
+
 import { CreateAdminUserDto } from '../dtos/create-admin-user.dto';
 import { UpdateAdminUserDto } from '../dtos/update-admin-user.dto';
 import { AdminUserResponseDto } from '../dtos/admin-user-response.dto';
-import { TransformInterceptor } from '@common/interceptors/transform.interceptor';
-import { GlobalExceptionFilter } from '@common/filters/global-exception.filter';
+
+import { CreateOrganizationDto } from '@modules/organizations/dtos/create-organization.dto';
+import { UpdateOrganizationDto } from '@modules/organizations/dtos/update-organization.dto';
+import { OrganizationResponseDto } from '@modules/organizations/dtos/organization-response.dto';
+import { Organization } from '@modules/organizations/entities/organization.entity';
+import { OrganizationStatus } from '@modules/organizations/entities/organization-status.enum';
+
+import { CreateUserDto } from '@modules/users/dtos/create-user.dto';
+import { UpdateUserDto } from '@modules/users/dtos/update-user.dto';
+import { UserResponseDto } from '@modules/users/dtos/user-response.dto';
+import { User } from '@modules/users/entities/user.entity';
+import { UserStatus } from '@modules/users/entities/user-status.enum';
+
 import {
   PaginationOptions,
   PaginationResult,
 } from '@common/interfaces/IPagination';
-import { AdminUser } from '../entities/admin-user.entity';
-import { AdminRole } from '../entities/admin-user.entity';
-import { Roles } from '@common/decorators/roles.decorator';
+import { GlobalExceptionFilter } from '@common/filters/global-exception.filter';
+import { TransformInterceptor } from '@common/interceptors/transform.interceptor';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
-import { OrganizationResponseDto } from '@modules/organizations/dtos/organization-response.dto';
-import { OrganizationStatus } from '@modules/organizations/entities/organization-status.enum';
-import { Organization } from '@modules/organizations/entities/organization.entity';
-import { CreateOrganizationDto } from '@modules/organizations/dtos/create-organization.dto';
-import { UpdateOrganizationDto } from '@modules/organizations/dtos/update-organization.dto';
-import { UserStatus } from '@modules/users/entities/user-status.enum';
-import { UserResponseDto } from '@modules/users/dtos/user-response.dto';
-import { User } from '@modules/users/entities/user.entity';
-import { CreateUserDto } from '@modules/users/dtos/create-user.dto';
-import { UpdateUserDto } from '@modules/users/dtos/update-user.dto';
+import { Roles } from '@common/decorators/roles.decorator';
+import { GlobalRole } from '@common/enums/global-role.enum';
+import { RolesGuard } from '@modules/auth/guards/roles.guard';
+import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
+
 import { FindOptionsWhere, ILike } from 'typeorm';
+
+// Swagger documentation decorators
 import {
   ListAdminUsersDocs,
   CreateAdminUserDocs,
@@ -68,16 +80,14 @@ import {
   LockUserAccountDocs,
   UnlockUserAccountDocs,
 } from '../documentation/admin-users.controller.documentation';
-import { ApiGlobalResponses } from '@common/utils/api-global-responses.decorator';
-import { ApiTags } from '@nestjs/swagger';
+import { AdminUser } from '../entities/admin-user.entity';
 
 @ApiTags('Admin')
 @Controller({ path: 'admin', version: '1' })
-@ApiGlobalResponses()
 @UseFilters(GlobalExceptionFilter)
 @UseInterceptors(TransformInterceptor)
-// @UseGuards(RolesGuard)
-// @Roles(AdminRole.SUPER_ADMIN)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(GlobalRole.PLATFORM_ADMIN) // Class-level role requirement
 export class AdminUsersController {
   constructor(
     private readonly adminUsersService: AdminUsersService,
@@ -85,7 +95,9 @@ export class AdminUsersController {
     private readonly organizationManagementService: OrganizationManagementService,
   ) {}
 
+  // ------------------------------------------------------------------------
   // Admin User Management
+  // ------------------------------------------------------------------------
 
   @Get('admin-users')
   @ListAdminUsersDocs()
@@ -94,16 +106,11 @@ export class AdminUsersController {
     @Query('limit') limit = 10,
     @Query('search') search?: string,
   ): Promise<PaginationResult<AdminUserResponseDto>> {
-    const whereOptions: FindOptionsWhere<AdminUser> = {};
+    const whereOptions: FindOptionsWhere<User> = {};
 
+    // Example: searching by firstName; you can expand to lastName, email, etc.
     if (search) {
-      whereOptions.firstName = ILike(`%${search}%`);
-      // If searching multiple fields:
-      // whereOptions = [
-      //   { firstName: ILike(`%${search}%`) },
-      //   { lastName: ILike(`%${search}%`) },
-      //   { email: ILike(`%${search}%`) },
-      // ];
+      whereOptions['firstName'] = ILike(`%${search}%`);
     }
 
     const paginationOptions: PaginationOptions<AdminUser> = {
@@ -114,7 +121,7 @@ export class AdminUsersController {
       },
     };
 
-    return await this.adminUsersService.listAdminUsers(paginationOptions);
+    return this.adminUsersService.listAdminUsers(paginationOptions);
   }
 
   @Post('admin-users')
@@ -125,7 +132,7 @@ export class AdminUsersController {
     @CurrentUser() currentUser: AdminUser,
   ): Promise<AdminUserResponseDto> {
     const createdById = currentUser.id;
-    return await this.adminUsersService.createAdminUser(
+    return this.adminUsersService.createAdminUser(
       createAdminUserDto,
       createdById,
     );
@@ -139,7 +146,7 @@ export class AdminUsersController {
     @CurrentUser() currentUser: AdminUser,
   ): Promise<AdminUserResponseDto> {
     const updatedById = currentUser.id;
-    return await this.adminUsersService.updateAdminUser(
+    return this.adminUsersService.updateAdminUser(
       id,
       updateAdminUserDto,
       updatedById,
@@ -195,14 +202,16 @@ export class AdminUsersController {
     await this.adminUsersService.unlockAdminUserAccount(id, unlockedById);
   }
 
+  // ------------------------------------------------------------------------
   // Organization Management
+  // ------------------------------------------------------------------------
 
   @Get('organizations/:id')
   @FindOrganizationByIdDocs()
   async findOrganizationById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<OrganizationResponseDto> {
-    return await this.organizationManagementService.findOrganizationById(id);
+    return this.organizationManagementService.findOrganizationById(id);
   }
 
   @Get('organizations')
@@ -225,12 +234,10 @@ export class AdminUsersController {
     const paginationOptions: PaginationOptions<Organization> = {
       page,
       limit,
-      options: {
-        where: whereOptions,
-      },
+      options: { where: whereOptions },
     };
 
-    return await this.organizationManagementService.listOrganizations(
+    return this.organizationManagementService.listOrganizations(
       paginationOptions,
     );
   }
@@ -243,7 +250,7 @@ export class AdminUsersController {
     @CurrentUser() currentUser: AdminUser,
   ): Promise<OrganizationResponseDto> {
     const createdById = currentUser.id;
-    return await this.organizationManagementService.createOrganization(
+    return this.organizationManagementService.createOrganization(
       createOrganizationDto,
       createdById,
     );
@@ -257,7 +264,7 @@ export class AdminUsersController {
     @CurrentUser() currentUser: AdminUser,
   ): Promise<OrganizationResponseDto> {
     const updatedById = currentUser.id;
-    return await this.organizationManagementService.updateOrganization(
+    return this.organizationManagementService.updateOrganization(
       id,
       updateOrganizationDto,
       updatedById,
@@ -318,14 +325,16 @@ export class AdminUsersController {
     );
   }
 
+  // ------------------------------------------------------------------------
   // User Management
+  // ------------------------------------------------------------------------
 
   @Get('users/:id')
   @FindUserByIdDocs()
   async findUserById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<UserResponseDto> {
-    return await this.userManagementService.findUserById(id);
+    return this.userManagementService.findUserById(id);
   }
 
   @Get('users')
@@ -346,12 +355,10 @@ export class AdminUsersController {
     const paginationOptions: PaginationOptions<User> = {
       page,
       limit,
-      options: {
-        where: whereOptions,
-      },
+      options: { where: whereOptions },
     };
 
-    return await this.userManagementService.listUsers(paginationOptions);
+    return this.userManagementService.listUsers(paginationOptions);
   }
 
   @Post('users')
@@ -362,10 +369,7 @@ export class AdminUsersController {
     @CurrentUser() currentUser: AdminUser,
   ): Promise<UserResponseDto> {
     const createdById = currentUser.id;
-    return await this.userManagementService.createUser(
-      createUserDto,
-      createdById,
-    );
+    return this.userManagementService.createUser(createUserDto, createdById);
   }
 
   @Put('users/:id')
@@ -376,7 +380,7 @@ export class AdminUsersController {
     @CurrentUser() currentUser: AdminUser,
   ): Promise<UserResponseDto> {
     const updatedById = currentUser.id;
-    return await this.userManagementService.updateUser(
+    return this.userManagementService.updateUser(
       id,
       updateUserDto,
       updatedById,

@@ -1,10 +1,8 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { OrganizationResponseDto } from '../dtos/organization-response.dto';
-import {
-  CreateOrganizationDto,
-  CreateOrganizationWithAdminDto,
-} from '../dtos/create-organization.dto';
+import { CreateOrganizationDto } from '../dtos/create-organization.dto';
+import { CreateOrganizationWithAdminDto } from '../dtos/create-organization-with-admin.dto';
 
 export function CreateOrganizationDocs() {
   return applyDecorators(
@@ -119,16 +117,17 @@ export function CreateOrganizationDocs() {
 export function CreateOrganizationWithAdminDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Create a new organization with an admin user',
+      summary: 'Create a new organization with a SUPER_ADMIN user',
       description: `
-        Creates a new organization and its initial admin user in a single operation.
+        Creates a new organization along with an initial SUPER_ADMIN user.
 
         **Access:** Requires Super Admin privileges.
 
         **Notes:**
-        - Both organization and admin user accounts are created.
-        - The admin user will receive an email verification link.
+        - Both organization and SUPER_ADMIN user accounts are created.
+        - The SUPER_ADMIN user will receive an email verification link.
         - The admin password must meet the security requirements.
+        - The SUPER_ADMIN has full access and can manage all aspects of the organization.
       `,
     }),
     // Optionally, include an authentication decorator
@@ -136,12 +135,12 @@ export function CreateOrganizationWithAdminDocs() {
     ApiBody({
       type: CreateOrganizationWithAdminDto,
       required: true,
-      description: 'Organization and admin user creation payload',
+      description: 'Organization and SUPER_ADMIN user creation payload',
       examples: {
         basic: {
-          summary: 'Basic Organization with Admin',
+          summary: 'Basic Organization with SUPER_ADMIN',
           description:
-            'Create an organization with minimal required fields and an admin user',
+            'Create an organization with minimal required fields and a SUPER_ADMIN user',
           value: {
             name: 'Acme Corp',
             adminEmail: 'admin@acme.com',
@@ -149,15 +148,15 @@ export function CreateOrganizationWithAdminDocs() {
           },
         },
         complete: {
-          summary: 'Complete Organization with Admin',
+          summary: 'Complete Organization with SUPER_ADMIN',
           description:
-            'Full organization setup with all optional fields and an admin user',
+            'Full organization setup with all optional fields and a SUPER_ADMIN user',
           value: {
             name: 'Acme Corporation',
             contactEmail: 'contact@acme.com',
             contactPhoneNumber: '+1234567890',
             industry: 'Technology',
-            foundedDate: '2020-01-01',
+            foundedDate: '2020-01-01T00:00:00.000Z',
             description: 'Leading technology solutions provider',
             website: 'https://www.acme.com',
             logoUrl: 'https://www.acme.com/logo.png',
@@ -167,6 +166,7 @@ export function CreateOrganizationWithAdminDocs() {
               documentRetentionDays: 365,
               autoArchiveEnabled: true,
             },
+            blockchainAddress: '0x1234567890abcdef1234567890abcdef12345678',
             address: {
               streetAddress: '123 Tech Street',
               city: 'San Francisco',
@@ -174,16 +174,29 @@ export function CreateOrganizationWithAdminDocs() {
               country: 'USA',
               postalCode: '94105',
             },
+            metadata: {
+              additionalNotes: 'This is a test organization',
+              region: 'North America',
+            },
             adminEmail: 'admin@acme.com',
             adminPassword: 'StrongP@ssw0rd123!',
+            adminFirstName: 'Alice',
+            adminLastName: 'Smith',
+            adminPhoneNumber: '+19876543210',
+            adminPreferences: {
+              emailNotifications: true,
+              theme: 'dark',
+              language: 'en',
+              timezone: 'UTC',
+            },
           },
         },
       },
     }),
     ApiResponse({
       status: 201,
-      description: 'Organization and admin user created successfully.',
-      type: OrganizationResponseDto, // Or a custom DTO if it includes admin user info
+      description: 'Organization and SUPER_ADMIN user created successfully.',
+      type: OrganizationResponseDto,
     }),
     ApiResponse({
       status: 400,
@@ -195,7 +208,7 @@ export function CreateOrganizationWithAdminDocs() {
               statusCode: 400,
               message: [
                 'adminEmail must be a valid email',
-                'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character',
+                'adminPassword must be longer than or equal to 8 characters',
               ],
               error: 'Bad Request',
             },
@@ -206,7 +219,7 @@ export function CreateOrganizationWithAdminDocs() {
     ApiResponse({
       status: 403,
       description:
-        'Insufficient permissions to create organization with admin user.',
+        'Insufficient permissions to create organization with SUPER_ADMIN user.',
       schema: {
         example: {
           statusCode: 403,
@@ -217,11 +230,11 @@ export function CreateOrganizationWithAdminDocs() {
     }),
     ApiResponse({
       status: 409,
-      description: 'Organization or admin user already exists.',
+      description: 'Organization or SUPER_ADMIN user already exists.',
       schema: {
         example: {
           statusCode: 409,
-          message: 'Organization with this name already exists',
+          message: 'Organization name already exists.',
           error: 'Conflict',
         },
       },

@@ -9,8 +9,8 @@ import {
   Length,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { UserRole } from '../entities/user-role.enum';
 import { UserStatus } from '../entities/user-status.enum';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 export class UpdateUserDto {
   @ApiPropertyOptional({
@@ -59,13 +59,13 @@ export class UpdateUserDto {
   password?: string;
 
   @ApiPropertyOptional({
-    enum: UserRole,
-    example: UserRole.USER,
+    enum: GlobalRole,
+    example: GlobalRole.END_USER,
     description: 'Role of the user',
   })
   @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
+  @IsEnum(GlobalRole)
+  role?: GlobalRole;
 
   @ApiPropertyOptional({
     enum: UserStatus,

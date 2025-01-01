@@ -11,7 +11,6 @@ import {
   MaxLength,
   MinLength,
   IsPhoneNumber,
-  IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -115,24 +114,4 @@ export class CreateOrganizationDto {
   @IsObject()
   @IsOptional()
   metadata?: Record<string, any>;
-}
-
-export class CreateOrganizationWithAdminDto extends CreateOrganizationDto {
-  @ApiProperty({
-    description: 'Admin user email address',
-    example: 'admin@acme.com',
-  })
-  @IsEmail()
-  @IsNotEmpty()
-  adminEmail: string;
-
-  @ApiProperty({
-    description: 'Admin user password',
-    example: 'StrongPassword123!',
-  })
-  @IsString()
-  @MinLength(8)
-  @MaxLength(128)
-  @IsNotEmpty()
-  adminPassword: string;
 }

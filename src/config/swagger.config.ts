@@ -7,11 +7,11 @@ export const swaggerConfig = new DocumentBuilder()
     `
     The Cert API is a comprehensive document authentication and management system. It supports multiple user types and provides a wide range of functionalities:
 
+    - **Auth**: Secure login and registration processes with role-based access control.
     - **Users**: Regular users can register, login, manage their profile, upload documents, and track document statuses.
     - **Organizations**: Can review, authorize, and manage documents submitted by users.
     - **Admins**: Have overall system management capabilities.
     - **Documents**: Upload, verification, and management of various document types.
-    - **Authentication**: Secure login and registration processes with role-based access control.
     - **Verifications**: Process for verifying and validating submitted documents.
     - **Notifications**: Advanced system for keeping users and organizations informed about important events and status changes.
 

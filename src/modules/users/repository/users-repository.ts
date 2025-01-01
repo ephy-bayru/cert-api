@@ -1,10 +1,13 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import {
   Brackets,
   DataSource,
   EntityManager,
   FindOptionsWhere,
-  ILike,
   IsNull,
   QueryRunner,
 } from 'typeorm';
@@ -17,7 +20,7 @@ import {
   PaginationResult,
 } from 'src/common/interfaces/IPagination';
 import { UserStatus } from '../entities/user-status.enum';
-import { UserRole } from '../entities/user-role.enum';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 @Injectable()
 export class UsersRepository extends BaseRepository<User> {
@@ -29,25 +32,66 @@ export class UsersRepository extends BaseRepository<User> {
    * Creates a new user with default role and status.
    * Ensures unique fields are not duplicated.
    */
+
+  /**
+   * Creates a user (simple approach: no explicit transaction).
+   * If you need to coordinate multiple DB actions that must all succeed or fail,
+   * do use a transaction. For *just* creating one row, a direct save can suffice.
+   */
   async createUser(userData: CreateUserDto): Promise<User> {
     await this.checkUniqueFields(userData);
 
-    // Use the transaction method from BaseRepository
-    return await this.transaction(async (queryRunner: QueryRunner) => {
-      const userEntity = this.create({
-        ...userData,
-        role: UserRole.USER,
-        status: UserStatus.PENDING_ACTIVATION,
-      });
+    this.logger.debug(
+      'createUser: Received user data to create',
+      'UsersRepository',
+      {
+        userData,
+      },
+    );
 
-      const user = await queryRunner.manager.save(userEntity);
-      this.logger.info('User created', 'UsersRepository', { userId: user.id });
-      return user;
+    // Build user entity
+    const newUser = this.repository.create({
+      ...userData,
+      role: GlobalRole.END_USER,
+      status: UserStatus.PENDING_ACTIVATION,
     });
+
+    try {
+      // Attempt to save user
+      const savedUser = await this.repository.save(newUser);
+
+      this.logger.info('User created successfully', 'UsersRepository', {
+        userId: savedUser.id,
+      });
+      return savedUser;
+    } catch (error) {
+      // Attempt more specific error handling:
+      if (error?.code === '23505') {
+        // 23505 = Postgres unique violation
+        this.logger.warn('User creation conflict', 'UsersRepository', {
+          error: this.formatFullErrors(error),
+        });
+        throw new ConflictException(
+          'A user with these unique fields already exists. ' +
+            'Please review your data and try again.',
+        );
+      }
+
+      // Fall back to generic internal server error
+      this.logger.error('Error creating user entity', 'UsersRepository', {
+        error: this.formatFullErrors(error),
+      });
+      throw new InternalServerErrorException(
+        'Failed to create user due to an unexpected error.',
+      );
+    }
   }
 
   /**
    * Checks for unique fields to prevent duplicates.
+   */
+  /**
+   * Make sure these fields are unique before trying to save.
    */
   private async checkUniqueFields(userData: CreateUserDto): Promise<void> {
     const conditions: FindOptionsWhere<User>[] = [];
@@ -79,22 +123,25 @@ export class UsersRepository extends BaseRepository<User> {
 
     if (conditions.length === 0) return;
 
+    // if *any* condition is true (OR condition), there's a conflict
     const existingUser = await this.repository.findOne({ where: conditions });
-
     if (existingUser) {
-      const existingFields = [];
+      const existingFields: string[] = [];
       if (existingUser.email === userData.email) existingFields.push('email');
       if (existingUser.userName === userData.userName)
         existingFields.push('userName');
       if (existingUser.fcn === userData.fcn) existingFields.push('fcn');
       if (existingUser.fin === userData.fin) existingFields.push('fin');
-      if (existingUser.address?.phoneNumber === userData.address?.phoneNumber)
+      if (existingUser.address?.phoneNumber === userData.address?.phoneNumber) {
         existingFields.push('phoneNumber');
+      }
 
       this.logger.warn(
         'Attempt to create user with existing fields',
         'UsersRepository',
-        { existingFields },
+        {
+          existingFields,
+        },
       );
       throw new ConflictException(
         `The following fields already exist: ${existingFields.join(', ')}`,
@@ -124,7 +171,7 @@ export class UsersRepository extends BaseRepository<User> {
   async updateUser(id: string, updateData: Partial<User>): Promise<User> {
     await this.update(id, updateData);
     this.logger.info('User updated', 'UsersRepository', { userId: id });
-    return await this.getUserById(id);
+    return this.getUserById(id);
   }
 
   /**
@@ -208,7 +255,6 @@ export class UsersRepository extends BaseRepository<User> {
     });
 
     const [data, total] = await queryBuilder.getManyAndCount();
-
     return { data, total, page, limit };
   }
 
@@ -250,9 +296,25 @@ export class UsersRepository extends BaseRepository<User> {
   }
 
   public async fieldExists(field: string, value: any): Promise<boolean> {
+    // Convert something like 'address.phoneNumber' into { address: { phoneNumber: value }}
     const where = field
       .split('.')
-      .reduceRight((value, key) => ({ [key]: value }), value);
-    return await this.exists({ ...where, deletedAt: IsNull() });
+      .reduceRight((val, key) => ({ [key]: val }), value);
+    return this.exists({ ...where, deletedAt: IsNull() });
+  }
+
+  /**
+   * Example of adding the "formatFullError" helper method
+   * so you can log more details in catch blocks within this class.
+   */
+  private formatFullErrors(error: any): any {
+    if (!error || typeof error !== 'object') {
+      return error;
+    }
+    const formatted: any = { ...error };
+    if (error.driverError) {
+      formatted.driverError = { ...error.driverError };
+    }
+    return formatted;
   }
 }

@@ -11,9 +11,9 @@ import {
   VersionColumn,
   JoinColumn,
 } from 'typeorm';
-import { OrganizationUserRole } from './organization-user-role.enum';
 import { Organization } from './organization.entity';
 import { Exclude } from 'class-transformer';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 /**
  * Represents organization-specific users who can:
@@ -87,13 +87,12 @@ export class OrganizationUser {
   @Column({ nullable: true, length: 100 })
   employeeId?: string;
 
-  // Role and Permissions
-  @Index()
   @Column({
     type: 'enum',
-    enum: OrganizationUserRole,
+    enum: GlobalRole,
+    default: GlobalRole.MEMBER,
   })
-  role: OrganizationUserRole;
+  role: GlobalRole;
 
   @Column({ type: 'jsonb', default: {} })
   permissions: {

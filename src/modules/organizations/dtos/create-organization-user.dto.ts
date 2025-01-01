@@ -13,9 +13,9 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { OrganizationUserRole } from '../entities/organization-user-role.enum';
 import { Type } from 'class-transformer';
 import { OrganizationUserPermissionsDto } from './organization-user-permissions.dto';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 export class CreateOrganizationUserDto {
   @ApiProperty()
@@ -93,9 +93,9 @@ export class CreateOrganizationUserDto {
   employeeId?: string;
 
   // Role and Permissions
-  @ApiProperty({ enum: OrganizationUserRole })
-  @IsEnum(OrganizationUserRole)
-  role: OrganizationUserRole;
+  @ApiProperty({ enum: GlobalRole })
+  @IsEnum(GlobalRole)
+  role: GlobalRole;
 
   @ApiPropertyOptional()
   @ValidateNested()

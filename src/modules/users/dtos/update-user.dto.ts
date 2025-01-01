@@ -11,10 +11,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { UserRole } from '../entities/user-role.enum';
 import { UserStatus } from '../entities/user-status.enum';
 import { ProviderType } from '../enums/provider-types';
 import { AddressDto } from './address.dto';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -85,10 +85,10 @@ export class UpdateUserDto {
   fin?: string;
 
   @IsOptional()
-  @IsEnum(UserRole, {
+  @IsEnum(GlobalRole, {
     message: 'Role must be a valid type (e.g., USER, ORGANIZATION, ADMIN).',
   })
-  role?: UserRole;
+  role?: GlobalRole;
 
   @IsOptional()
   @ValidateNested()

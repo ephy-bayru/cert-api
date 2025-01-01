@@ -45,6 +45,7 @@
     "@nestjs/throttler": "^6.2.1",
     "@nestjs/typeorm": "^10.0.2",
     "@types/json2csv": "^5.0.7",
+    "@types/passport-jwt": "^4.0.1",
     "@types/pdfkit": "^0.13.5",
     "axios": "^1.6.8",
     "bcrypt": "^5.1.1",

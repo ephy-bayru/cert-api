@@ -1,10 +1,7 @@
 import {
   Injectable,
   NotFoundException,
-  ConflictException,
-  InternalServerErrorException,
 } from '@nestjs/common';
-import { CreateOrganizationDto, CreateOrganizationWithAdminDto } from '../dtos/create-organization.dto';
 import { UpdateOrganizationDto } from '../dtos/update-organization.dto';
 import { Organization } from '../entities/organization.entity';
 import {
@@ -13,6 +10,7 @@ import {
 } from '@common/interfaces/IPagination';
 import { LoggerService } from '@common/services/logger.service';
 import { OrganizationsRepository } from '../repository/organizations.repository';
+import { CreateOrganizationWithAdminDto } from '../dtos/create-organization-with-admin.dto';
 
 @Injectable()
 export class OrganizationService {
@@ -25,27 +23,30 @@ export class OrganizationService {
     createOrganizationWithAdminDto: CreateOrganizationWithAdminDto,
     createdById: string,
   ): Promise<Organization> {
+    this.logger.log(
+      `Initiating creation of organization '${createOrganizationWithAdminDto.name}' by user ID: ${createdById}`,
+    );
+
     try {
-        const { adminEmail, adminPassword, ...organizationData } = createOrganizationWithAdminDto;
-        // organizationData is of type CreateOrganizationDto
-        const organization = await this.organizationsRepository.createOrganizationWithAdmin(
-          organizationData,
-          adminEmail,
-          adminPassword,
+      const organization =
+        await this.organizationsRepository.createOrganizationWithAdmin(
+          createOrganizationWithAdminDto,
           createdById,
         );
-      this.logger.info('Organization created successfully', 'OrganizationService', {
-        organizationId: organization.id,
-      });
+
+      this.logger.log(
+        `Organization '${organization.name}' created successfully with ID: ${organization.id}`,
+      );
+
       return organization;
     } catch (error) {
-      this.logger.error('Failed to create organization with admin', 'OrganizationService', {
-        error,
-      });
+      this.logger.error(
+        `Failed to create organization '${createOrganizationWithAdminDto.name}'`,
+        error.stack,
+      );
       throw error;
     }
   }
-  
 
   async activateOrganization(
     organizationId: string,

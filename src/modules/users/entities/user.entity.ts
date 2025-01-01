@@ -21,7 +21,7 @@ import { AuditLog } from '@modules/audit/entities/audit-log.entity';
 import { UserPreferences } from './user-preference.entity';
 import { ProviderType } from '../enums/provider-types';
 import { UserStatus } from './user-status.enum';
-import { UserRole } from './user-role.enum';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 /**
  * User Entity represents individual users who can:
@@ -41,7 +41,7 @@ export class User {
   @Column({ unique: true, length: 150 })
   email: string;
 
-  @Column({ select: false })
+  @Column()
   @Exclude({ toPlainOnly: true })
   password: string;
 
@@ -90,10 +90,10 @@ export class User {
 
   @Column({
     type: 'enum',
-    enum: UserRole,
-    default: UserRole.USER,
+    enum: GlobalRole,
+    default: GlobalRole.END_USER,
   })
-  role: UserRole;
+  role: GlobalRole;
 
   // Two-factor authentication
   @Column({ default: false })
@@ -132,6 +132,9 @@ export class User {
     default: UserStatus.PENDING_ACTIVATION,
   })
   status: UserStatus;
+
+  @Column({ default: false })
+  isTestUser: boolean;
 
   @Column({ type: 'timestamp', nullable: true })
   lastLogin?: Date;

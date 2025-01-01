@@ -13,12 +13,12 @@ import {
   Res,
   HttpStatus,
   HttpCode,
+  Global,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuditLogService } from '../services/audit-log.service';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { UserRole } from '@modules/users/entities/user-role.enum';
 import { AuditLog } from '../entities/audit-log.entity';
 import { GetAuditLogsDto } from '../dtos/get-audit-logs.dto';
 import { PaginationResult } from 'src/common/interfaces/IPagination';
@@ -31,6 +31,7 @@ import {
   GetAuditLogStatisticsDocs,
 } from '../documentation/audit-log.controller.documentation';
 import { CreateAuditLogDto } from '../dtos/create-audit-logs.dto';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 @ApiTags('Audit Logs')
 @ApiBearerAuth()
@@ -40,7 +41,7 @@ export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
   @Get()
-  @Roles(UserRole.ADMIN)
+  @Roles(GlobalRole.PLATFORM_ADMIN)
   @GetAuditLogsDocs()
   @HttpCode(HttpStatus.OK)
   async getAuditLogs(
@@ -50,7 +51,7 @@ export class AuditLogController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(GlobalRole.PLATFORM_ADMIN)
   @GetAuditLogByIdDocs()
   @HttpCode(HttpStatus.OK)
   async getAuditLogById(
@@ -64,7 +65,7 @@ export class AuditLogController {
   }
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(GlobalRole.PLATFORM_ADMIN)
   @CreateAuditLogDocs()
   @HttpCode(HttpStatus.CREATED)
   async createAuditLog(
@@ -74,7 +75,7 @@ export class AuditLogController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(GlobalRole.PLATFORM_ADMIN)
   @DeleteAuditLogDocs()
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAuditLog(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
@@ -82,7 +83,7 @@ export class AuditLogController {
   }
 
   @Get('statistics')
-  @Roles(UserRole.ADMIN)
+  @Roles(GlobalRole.PLATFORM_ADMIN)
   @GetAuditLogStatisticsDocs()
   @HttpCode(HttpStatus.OK)
   async getAuditLogStatistics(): Promise<any> {
@@ -90,7 +91,7 @@ export class AuditLogController {
   }
 
   @Get('export')
-  @Roles(UserRole.ADMIN)
+  @Roles(GlobalRole.PLATFORM_ADMIN)
   @ExportAuditLogsDocs()
   @HttpCode(HttpStatus.OK)
   async exportAuditLogs(

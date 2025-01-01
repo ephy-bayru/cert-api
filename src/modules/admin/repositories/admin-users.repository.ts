@@ -4,15 +4,16 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { DataSource, IsNull, Not, ILike } from 'typeorm';
+import { DataSource, IsNull, Not } from 'typeorm';
 import { BaseRepository } from '@core/repository/base.repository';
-import { AdminUser, AdminRole } from '../entities/admin-user.entity';
+import { AdminUser } from '../entities/admin-user.entity';
 import { LoggerService } from '@common/services/logger.service';
 import {
   PaginationOptions,
   PaginationResult,
 } from '@common/interfaces/IPagination';
 import * as bcrypt from 'bcrypt';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 @Injectable()
 export class AdminUsersRepository extends BaseRepository<AdminUser> {
@@ -55,7 +56,7 @@ export class AdminUsersRepository extends BaseRepository<AdminUser> {
 
       // Set default values
       if (!adminUserData.role) {
-        adminUserData.role = AdminRole.ADMIN;
+        adminUserData.role = GlobalRole.PLATFORM_ADMIN;
       }
       adminUserData.isActive = true;
 
