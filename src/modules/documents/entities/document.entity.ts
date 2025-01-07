@@ -18,13 +18,14 @@ import { Verification } from '@modules/verifications/entities/verification.entit
 import { AuditLog } from '@modules/audit/entities/audit-log.entity';
 import { DocumentStatus } from './document-status.enum';
 import { DocumentType } from './document-type.enum';
-import { DocumentAccessLevel } from './document-access-level.enum';
 
 /**
  * Document Entity represents files that can be:
- * - Uploaded by users
+ * - Uploaded by a user OR an organization
+ * - If uploaded by a user => user is 'owner' + can share with multiple organizations
+ * - If uploaded by an organization => org is 'organizationOwner' + can assign doc to exactly ONE user
  * - Verified by organizations
- * - Shared with specific users/organizations
+ * - (No multi-user sharing)
  * - Tracked through blockchain
  */
 @Entity('documents')
@@ -42,11 +43,11 @@ export class Document {
   description?: string;
 
   @Index()
-  @Column({ 
+  @Column({
     type: 'enum',
     enum: DocumentType,
     nullable: true,
-    name: 'document_type'
+    name: 'document_type',
   })
   documentType?: DocumentType;
 
@@ -80,29 +81,52 @@ export class Document {
   @Column({ type: 'date', nullable: true, name: 'expiry_date' })
   expiryDate?: Date;
 
-  // Ownership Information
-  @ManyToOne(() => User, (user) => user.ownedDocuments)
-  owner: User;
+  /**
+   * Ownership:
+   * Either a User is the owner, OR an Organization is the owner.
+   * If 'owner' is set => this doc belongs to a user.
+   * If 'organizationOwner' is set => belongs to an organization.
+   */
+  @ManyToOne(() => User, (user) => user.ownedDocuments, { nullable: true })
+  owner?: User;
 
-  @Column({ name: 'owner_id' })
-  ownerId: string;
+  @Column({ name: 'owner_id', nullable: true })
+  ownerId?: string;
 
-  @ManyToOne(() => User, (user) => user.uploadedDocuments)
-  uploader: User;
+  @ManyToOne(() => Organization, { nullable: true })
+  organizationOwner?: Organization;
 
-  @Column({ name: 'uploader_id' })
-  uploaderId: string;
+  @Column({ name: 'organization_owner_id', nullable: true })
+  organizationOwnerId?: string;
 
-  // Document Access Management
-  @ManyToMany(() => User, (user) => user.accessibleDocuments)
-  @JoinTable({
-    name: 'document_user_access',
-    joinColumn: { name: 'document_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
-  })
-  usersWithAccess: User[];
+  /**
+   * Uploader:
+   * If a user is physically uploading, store their user ID here.
+   * If an organization is uploading, store the org’s user rep or handle separately.
+   */
+  @ManyToOne(() => User, (user) => user.uploadedDocuments, { nullable: true })
+  uploader?: User;
 
-  @ManyToMany(() => Organization)
+  @Column({ name: 'uploader_id', nullable: true })
+  uploaderId?: string;
+
+  /**
+   * Single user assigned by an organization. (E.g., an org awarding a degree to a user.)
+   * Only used when 'organizationOwner' is defined.
+   * This is optional and does NOT imply multiple user sharing.
+   */
+  @ManyToOne(() => User, { nullable: true })
+  assignedToUser?: User;
+
+  @Column({ name: 'assigned_to_user_id', nullable: true })
+  assignedToUserId?: string;
+
+  /**
+   * Document Access Management:
+   * A user who owns a doc can share with multiple organizations.
+   * This is a many-to-many relation. We do NOT share docs with multiple users.
+   */
+  @ManyToMany(() => Organization, (org) => org.accessibleDocuments)
   @JoinTable({
     name: 'document_organization_access',
     joinColumn: { name: 'document_id', referencedColumnName: 'id' },
@@ -143,7 +167,7 @@ export class Document {
   @VersionColumn()
   version: number;
 
-  // Timestamps and Lifecycle Dates
+  // Timestamps and Lifecycle
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

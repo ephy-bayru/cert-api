@@ -10,6 +10,7 @@ import {
 import { OrganizationUserRole } from '../entities/organization-user-role.enum';
 import { UpdateOrganizationUserDto } from '../dtos/update-organization-user.dto';
 import { OrganizationUserResponseDto } from '../dtos/organization-user-response.dto';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 export const UpdateOrganizationUserDocs = () => {
   return applyDecorators(
@@ -139,8 +140,8 @@ export const DeactivateOrganizationUserDocs = () => {
 export const UpdateOrganizationUserRoleDocs = () => {
   return applyDecorators(
     ApiOperation({
-      summary: 'Update organization user role',
-      description: 'Updates the role of an organization user',
+      summary: 'Update organization user roles',
+      description: 'Updates the roles of an organization user',
     }),
     ApiParam({
       name: 'organizationId',
@@ -155,19 +156,23 @@ export const UpdateOrganizationUserRoleDocs = () => {
     ApiBody({
       schema: {
         type: 'object',
-        required: ['role'],
+        required: ['roles'],
         properties: {
-          role: {
-            type: 'string',
-            enum: Object.values(OrganizationUserRole),
-            description: 'New role for the user',
+          roles: {
+            type: 'array',
+            items: {
+              type: 'string',
+              enum: Object.values(GlobalRole),
+              description: 'Role to assign to the user',
+            },
+            description: 'Array of roles to assign to the user',
           },
         },
       },
     }),
     ApiResponse({
       status: HttpStatus.OK,
-      description: 'User role updated successfully',
+      description: 'User roles updated successfully',
       type: OrganizationUserResponseDto,
     }),
     ApiResponse({
@@ -176,7 +181,7 @@ export const UpdateOrganizationUserRoleDocs = () => {
     }),
     ApiResponse({
       status: HttpStatus.BAD_REQUEST,
-      description: 'Invalid role provided',
+      description: 'Invalid roles provided',
     }),
     ApiResponse({
       status: HttpStatus.FORBIDDEN,

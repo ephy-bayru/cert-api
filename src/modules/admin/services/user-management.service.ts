@@ -279,7 +279,7 @@ export class UserManagementService {
       userName: rest.userName ?? '',
       fullName: `${rest.firstName ?? ''} ${rest.lastName ?? ''}`.trim(),
       isActive: rest.status === UserStatus.ACTIVE,
-      role: rest.role,
+      roles: rest.roles,
       status: rest.status,
       provider: rest.provider,
       fcn: rest.fcn,

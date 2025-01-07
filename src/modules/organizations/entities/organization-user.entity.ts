@@ -90,9 +90,10 @@ export class OrganizationUser {
   @Column({
     type: 'enum',
     enum: GlobalRole,
-    default: GlobalRole.MEMBER,
+    array: true,
+    default: [GlobalRole.MEMBER],
   })
-  role: GlobalRole;
+  roles: GlobalRole[];
 
   @Column({ type: 'jsonb', default: {} })
   permissions: {

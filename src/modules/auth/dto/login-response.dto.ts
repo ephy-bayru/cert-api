@@ -4,6 +4,9 @@ export class UserDetailsDto {
   @ApiProperty({ description: 'Unique ID of the user' })
   id: string;
 
+  @ApiProperty({ description: 'Username of the user' })
+  userName: string;
+
   @ApiProperty({ description: 'Email address of the user' })
   email: string;
 
@@ -11,9 +14,10 @@ export class UserDetailsDto {
   fullName: string;
 
   @ApiProperty({
-    description: 'Role of the user (e.g., ADMIN, SUPER_ADMIN, VERIFIER, etc.)',
+    description: 'Roles of the user (e.g., ADMIN, SUPER_ADMIN, VERIFIER, etc.)',
+    type: [String],
   })
-  role: string;
+  roles: string[];
 
   @ApiPropertyOptional({
     description: 'Organization ID if user belongs to an org',

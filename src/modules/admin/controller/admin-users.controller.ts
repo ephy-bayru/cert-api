@@ -87,7 +87,7 @@ import { AdminUser } from '../entities/admin-user.entity';
 @UseFilters(GlobalExceptionFilter)
 @UseInterceptors(TransformInterceptor)
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(GlobalRole.PLATFORM_ADMIN) // Class-level role requirement
+@Roles(GlobalRole.PLATFORM_SUPER_ADMIN) // Class-level role requirement
 export class AdminUsersController {
   constructor(
     private readonly adminUsersService: AdminUsersService,

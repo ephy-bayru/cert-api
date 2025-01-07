@@ -6,7 +6,7 @@ export class AdminUserResponseDto {
   firstName?: string;
   lastName?: string;
   phoneNumber?: string;
-  role: GlobalRole;
+  roles: GlobalRole[];
   isActive: boolean;
   isLocked: boolean;
   createdAt: Date;

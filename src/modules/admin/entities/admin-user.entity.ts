@@ -29,14 +29,18 @@ export class AdminUser {
   lastName?: string;
 
   @Column({ nullable: true, length: 100 })
+  userName?: string;
+
+  @Column({ nullable: true, length: 100 })
   phoneNumber?: string;
 
   @Column({
     type: 'enum',
     enum: GlobalRole,
-    default: GlobalRole.PLATFORM_ADMIN,
+    array: true,
+    default: [GlobalRole.PLATFORM_ADMIN],
   })
-  role: GlobalRole;
+  roles: GlobalRole[];
 
   @Column({ default: false })
   isActive: boolean;

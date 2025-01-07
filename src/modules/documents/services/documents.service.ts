@@ -4,7 +4,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Document } from '../entities/document.entity';
-import { CreateDocumentDto } from '../dtos/create-document.dto';
 import { UpdateDocumentDto } from '../dtos/update-document.dto';
 import { DocumentStatus } from '../entities/document-status.enum';
 import { PaginationResult } from 'src/common/interfaces/IPagination';
@@ -22,7 +21,9 @@ import {
   NotificationContentType,
   NotificationType,
 } from '@modules/notifications/entities/notification-type.enum';
-
+import { UploadDocumentDto } from '../dtos/upload-document.dto';
+import { S3Service } from './s3.service';
+import { EncryptionType } from '../entities/encryption-type';
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -30,23 +31,51 @@ export class DocumentsService {
     private readonly auditLogService: AuditLogService,
     private readonly notificationService: NotificationService,
     private readonly logger: LoggerService,
+    private readonly s3Service: S3Service,
   ) {}
 
   async createDocument(
-    createDocumentDto: CreateDocumentDto,
+    createDocumentDto: UploadDocumentDto,
     userId: string,
+    file?: Express.Multer.File,
   ): Promise<Document> {
     try {
+      // 1. S3 upload if file is provided
+      let s3Key: string | undefined;
+      if (file) {
+        s3Key = await this.s3Service.uploadFile(
+          file.buffer,
+          file.originalname,
+          'documents',
+          EncryptionType.NONE,
+        );
+      }
+
+      // 2. Create DB record
       const document = await this.documentsRepository.createDocument(
         createDocumentDto,
         userId,
       );
-      await this.auditLogService.createDocumentLog(
+
+      // 3. If S3 upload happened, update file info
+      if (s3Key && file) {
+        document.fileUrl = s3Key;
+        document.fileSize = file.size;
+        document.fileType = file.mimetype;
+        // If you have a hash, set it here
+        // document.fileHash = someComputedHash(file)
+        await this.documentsRepository.save(document);
+      }
+
+      // 4. Create Audit Log
+      await this.auditLogService.uploadDocumentLog(
         document.id,
         AuditAction.UPLOAD_DOCUMENT,
         userId,
         { documentId: document.id },
       );
+
+      // 5. Notifications
       await this.notificationService.createNotification({
         type: NotificationType.IN_APP,
         contentType: NotificationContentType.DOCUMENT_UPLOADED,
@@ -54,13 +83,14 @@ export class DocumentsService {
         priority: NotificationPriority.NORMAL,
         userId: userId,
       });
+
       return document;
     } catch (error) {
-      this.logger.error('Error creating document', 'DocumentsService', {
+      this.logger.error('Error uploading document', 'DocumentsService', {
         error,
         userId,
       });
-      throw new BadRequestException('Error creating document');
+      throw new BadRequestException('Error uploading document');
     }
   }
 
@@ -83,7 +113,7 @@ export class DocumentsService {
         updateDocumentDto,
         userId,
       );
-      await this.auditLogService.createDocumentLog(
+      await this.auditLogService.uploadDocumentLog(
         id,
         AuditAction.UPDATE_DOCUMENT,
         userId,
@@ -103,7 +133,7 @@ export class DocumentsService {
   async deleteDocument(id: string, userId: string): Promise<void> {
     try {
       await this.documentsRepository.softDeleteDocument(id, userId);
-      await this.auditLogService.createDocumentLog(
+      await this.auditLogService.uploadDocumentLog(
         id,
         AuditAction.DELETE_DOCUMENT,
         userId,
@@ -131,7 +161,8 @@ export class DocumentsService {
           organizationIds,
           userId,
         );
-      await this.auditLogService.createDocumentLog(
+      // Audit & Notification logic
+      await this.auditLogService.uploadDocumentLog(
         id,
         AuditAction.DOCUMENT_SUBMITTED_FOR_VERIFICATION,
         userId,
@@ -172,7 +203,7 @@ export class DocumentsService {
         newStatus,
         organizationId,
       );
-      await this.auditLogService.createDocumentLog(
+      await this.auditLogService.uploadDocumentLog(
         id,
         AuditAction.DOCUMENT_STATUS_CHANGED,
         organizationId,
@@ -229,7 +260,7 @@ export class DocumentsService {
         documentId,
         organizationId,
       );
-      await this.auditLogService.createDocumentLog(
+      await this.auditLogService.uploadDocumentLog(
         documentId,
         AuditAction.GRANT_DOCUMENT_ACCESS,
         grantedByUserId,
@@ -264,7 +295,7 @@ export class DocumentsService {
         documentId,
         organizationId,
       );
-      await this.auditLogService.createDocumentLog(
+      await this.auditLogService.uploadDocumentLog(
         documentId,
         AuditAction.REVOKE_DOCUMENT_ACCESS,
         revokedByUserId,
@@ -305,7 +336,8 @@ export class DocumentsService {
         organizationIds,
         userId,
       );
-      await this.auditLogService.createDocumentLog(
+      // Audit & Notification
+      await this.auditLogService.uploadDocumentLog(
         documentId,
         AuditAction.INITIATE_VERIFICATION,
         userId,

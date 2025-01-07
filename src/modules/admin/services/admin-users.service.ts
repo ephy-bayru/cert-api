@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateAdminUserDto } from '../dtos/create-admin-user.dto';
 import { UpdateAdminUserDto } from '../dtos/update-admin-user.dto';
 import { AdminUserResponseDto } from '../dtos/admin-user-response.dto';
@@ -33,15 +30,20 @@ export class AdminUsersService {
         createdBy: createdById,
       });
 
-      this.logger.log('Admin user created successfully', 'AdminUsersService', {
-        adminUserId: adminUser.id,
-      });
+      // Log success with relevant context
+      this.logger.log(
+        `Admin user created: ${adminUser.email} (ID: ${adminUser.id})`,
+        'AdminUsersService',
+      );
 
       return this.toResponseDto(adminUser);
     } catch (error) {
-      this.logger.error('Failed to create admin user', 'AdminUsersService', {
-        error,
-      });
+      // Log error with context
+      this.logger.error(
+        `Failed to create admin user: ${adminUserData.email}`,
+        'AdminUsersService',
+        { error },
+      );
       throw error;
     }
   }
@@ -226,11 +228,17 @@ export class AdminUsersService {
   /**
    * Finds an admin user by email.
    */
-  async findAdminUserByEmail(email: string): Promise<AdminUserResponseDto> {
+  async findAdminUserByEmail(
+    email: string,
+  ): Promise<AdminUserResponseDto | null> {
     try {
       const adminUser = await this.adminUsersRepository.findByEmail(email);
       if (!adminUser) {
-        throw new NotFoundException('Admin user not found');
+        this.logger.log(
+          `No admin user found for email: ${email}`,
+          'AdminUsersService',
+        );
+        return null;
       }
       return this.toResponseDto(adminUser);
     } catch (error) {
@@ -306,19 +314,20 @@ export class AdminUsersService {
     }
   }
 
-  /**
-   * Converts an AdminUser entity to AdminUserResponseDto.
-   */
-  private toResponseDto(adminUser: AdminUser): AdminUserResponseDto {
-    const {
-      password,
-      deletedAt,
-      deletedBy,
-      updatedBy,
-      createdBy,
-      version,
-      ...rest
-    } = adminUser;
-    return rest as AdminUserResponseDto;
-  }
+/**
+ * Converts an AdminUser entity to AdminUserResponseDto.
+ */
+private toResponseDto(adminUser: AdminUser): AdminUserResponseDto {
+  const {
+    password,
+    deletedAt,
+    deletedBy,
+    updatedBy,
+    createdBy,
+    version,
+    ...rest
+  } = adminUser;
+  return rest as AdminUserResponseDto;
+}
+
 }

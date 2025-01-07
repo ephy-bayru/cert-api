@@ -54,10 +54,15 @@ export class AdminUsersRepository extends BaseRepository<AdminUser> {
         adminUserData.password = await bcrypt.hash(adminUserData.password, 12);
       }
 
-      // Set default values
-      if (!adminUserData.role) {
-        adminUserData.role = GlobalRole.PLATFORM_ADMIN;
+      // Ensure roles array is present, default if not provided
+      if (
+        !adminUserData.roles ||
+        !Array.isArray(adminUserData.roles) ||
+        adminUserData.roles.length === 0
+      ) {
+        adminUserData.roles = [GlobalRole.PLATFORM_ADMIN];
       }
+
       adminUserData.isActive = true;
 
       // Create admin user entity

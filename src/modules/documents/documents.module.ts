@@ -6,6 +6,7 @@ import { Document } from './entities/document.entity';
 import { DocumentsController } from './controllers/documents.controller';
 import { AuditModule } from '../audit/audit.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { S3Service } from './services/s3.service';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     NotificationsModule
   ],
   controllers: [DocumentsController],
-  providers: [DocumentsService, DocumentsRepository],
-  exports: [DocumentsService, DocumentsRepository],
+  providers: [DocumentsService, DocumentsRepository, S3Service],
+  exports: [DocumentsService, DocumentsRepository, S3Service],
 })
 export class DocumentsModule {}

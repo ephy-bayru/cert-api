@@ -121,7 +121,7 @@ export class AuditLogService {
     });
   }
 
-  async createDocumentLog(
+  async uploadDocumentLog(
     documentId: string,
     action: AuditAction,
     performedBy: string,

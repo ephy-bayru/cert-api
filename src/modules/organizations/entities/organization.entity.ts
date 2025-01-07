@@ -22,8 +22,14 @@ import { Verification } from '@modules/verifications/entities/verification.entit
 import { AuditLog } from '@modules/audit/entities/audit-log.entity';
 import { OrganizationUser } from './organization-user.entity';
 
+/**
+ * Organization Entity represents:
+ * - Company or institution that can upload or own documents
+ * - Verify documents from users
+ * - Potentially assign documents to a user if the org is the owner
+ */
 @Entity('organizations')
-@Unique(['name', 'deletedAt']) // Allows reusing names for deleted organizations
+@Unique(['name', 'deletedAt'])
 @Check(`"contactEmail" IS NOT NULL OR "contactPhoneNumber" IS NOT NULL`) // Requires at least one contact method
 export class Organization {
   @PrimaryGeneratedColumn('uuid')
@@ -102,17 +108,21 @@ export class Organization {
   @OneToMany(() => Verification, (verification) => verification.organization)
   verificationRequests: Verification[];
 
+  /**
+   * If you keep distinct sets of documents for "verifiedDocuments" vs. "accessibleDocuments",
+   * you can define separate relationships. "accessibleDocuments" is for documents that
+   * this org can access.  "verifiedDocuments" might be a separate join.
+   */
   @ManyToMany(() => Document)
   @JoinColumn()
   verifiedDocuments: Document[];
 
-  @ManyToMany(() => Document)
-  @JoinColumn()
+  @ManyToMany(() => Document, (doc) => doc.organizationsWithAccess)
   accessibleDocuments: Document[];
 
   // Blockchain Integration
   @Index({ unique: true })
-  @Column({ nullable: true, length: 42 }) // Standard Ethereum address length
+  @Column({ nullable: true, length: 42 })
   blockchainAddress?: string;
 
   @Column({ type: 'jsonb', nullable: true })

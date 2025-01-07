@@ -486,7 +486,7 @@ export function DeactivateOrganizationUserDocs() {
 /**
  * Documentation for updating an organization user's role.
  */
-export function UpdateOrganizationUserRoleDocs() {
+export function UpdateOrganizationUserRolesDocs() {
   return applyDecorators(
     ApiOperation({
       summary: 'Update organization user role',

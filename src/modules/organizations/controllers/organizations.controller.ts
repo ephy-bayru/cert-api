@@ -68,11 +68,12 @@ import {
   SearchOrganizationUsersDocs,
   UnlockOrganizationUserAccountDocs,
   UpdateOrganizationUserDocs,
-  UpdateOrganizationUserRoleDocs,
+  UpdateOrganizationUserRolesDocs,
 } from '../documentation/organization-user.documentation';
 
-import { FindOptionsOrder, FindOptionsWhere } from 'typeorm';
+import { ArrayContains, FindOptionsOrder, FindOptionsWhere } from 'typeorm';
 import { LoggerService } from '@common/services/logger.service';
+import { UpdateUserRolesDto } from '../dtos/update-user-roles.dto';
 
 @ApiTags('Organizations')
 @Controller({ path: 'organizations', version: '1' })
@@ -347,7 +348,9 @@ export class OrganizationController {
     @Query('department') department?: string,
   ): Promise<PaginationResult<OrganizationUser>> {
     const whereOptions: FindOptionsWhere<OrganizationUser> = { organizationId };
-    if (role) whereOptions.role = role;
+
+    // Use ArrayContains to filter by role within roles array
+    if (role) whereOptions.roles = ArrayContains([role]);
     if (isActive !== undefined) whereOptions.isActive = isActive;
     if (department) whereOptions.department = department;
 
@@ -418,18 +421,18 @@ export class OrganizationController {
     );
   }
 
-  @Patch(':organizationId/users/:userId/role')
+  @Patch(':organizationId/users/:userId/roles')
   @Roles(GlobalRole.ORG_ADMIN)
-  @UpdateOrganizationUserRoleDocs()
-  async updateOrganizationUserRole(
+  @UpdateOrganizationUserRolesDocs()
+  async updateOrganizationUserRoles(
     @Param('organizationId', ParseUUIDPipe) orgId: string,
     @Param('userId', ParseUUIDPipe) userId: string,
-    @Body('role') role: GlobalRole,
+    @Body() updateUserRolesDto: UpdateUserRolesDto,
     @CurrentUser() currentUser: User,
   ): Promise<void> {
-    await this.organizationUserService.updateOrganizationUserRole(
+    await this.organizationUserService.updateOrganizationUserRoles(
       userId,
-      role,
+      updateUserRolesDto.roles,
       currentUser.id,
     );
   }

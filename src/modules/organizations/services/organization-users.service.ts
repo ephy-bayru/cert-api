@@ -148,15 +148,15 @@ export class OrganizationUserService {
     }
   }
 
-  async updateOrganizationUserRole(
+  async updateOrganizationUserRoles(
     userId: string,
-    role: GlobalRole,
+    roles: GlobalRole[],
     updatedById: string,
   ): Promise<void> {
     try {
-      await this.organizationUsersRepository.updateOrganizationUserRole(
+      await this.organizationUsersRepository.updateOrganizationUserRoles(
         userId,
-        role,
+        roles,
         updatedById,
       );
       this.logger.info(
@@ -164,7 +164,7 @@ export class OrganizationUserService {
         'OrganizationUserService',
         {
           userId,
-          role,
+          roles,
         },
       );
     } catch (error) {

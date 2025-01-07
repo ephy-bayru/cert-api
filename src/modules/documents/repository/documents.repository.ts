@@ -4,13 +4,13 @@ import { Document } from '../entities/document.entity';
 import { BaseRepository } from 'src/core/repository/base.repository';
 import { LoggerService } from 'src/common/services/logger.service';
 import { PaginationResult } from 'src/common/interfaces/IPagination';
-import { CreateDocumentDto } from '../dtos/create-document.dto';
-import { UpdateDocumentDto } from '../dtos/update-document.dto';
 import { DocumentStatus } from '../entities/document-status.enum';
 import {
   DocumentFilters,
   DocumentSearchParams,
 } from '../interfaces/document-filters.interface';
+import { UploadDocumentDto } from '../dtos/upload-document.dto';
+import { UpdateDocumentDto } from '../dtos/update-document.dto';
 
 @Injectable()
 export class DocumentsRepository extends BaseRepository<Document> {
@@ -18,28 +18,50 @@ export class DocumentsRepository extends BaseRepository<Document> {
     super(dataSource, Document, logger);
   }
 
-  // CRUD Operations
+  // ---- Create Document ----
   async createDocument(
-    createDocumentDto: CreateDocumentDto,
+    createDocumentDto: UploadDocumentDto,
     userId: string,
   ): Promise<Document> {
-    // Convert metadata if needed
-    const metadata = createDocumentDto.metadata
-      ? JSON.parse(createDocumentDto.metadata)
-      : undefined;
+    let parsedMetadata: any;
+    if (createDocumentDto.metadata) {
+      try {
+        parsedMetadata = JSON.parse(createDocumentDto.metadata);
+      } catch (err) {
+        this.logger.error(
+          'Invalid JSON in metadata',
+          'DocumentsRepository.createDocument',
+          { error: err },
+        );
+      }
+    }
 
-    // Ensure documentType is an enum (if needed)
-    // Assuming createDocumentDto.documentType is already a valid DocumentType enum
-    return this.create({
-      ...createDocumentDto,
+    // Create the Document entity:
+    const docEntity = this.repository.create({
+      title: createDocumentDto.title,
+      description: createDocumentDto.description,
+      documentType: createDocumentDto.documentType as any,
+      expiryDate: createDocumentDto.expiryDate,
+      tags: createDocumentDto.tags,
+      status: createDocumentDto.status || DocumentStatus.DRAFT,
+      // fileUrl, fileSize, fileType can be set after S3 upload in the service
+      fileUrl: '',
+      fileHash: '',
+      fileSize: 0,
+      fileType: '',
+      uploader: { id: createDocumentDto.uploaderId } as any,
+      // If you want the user performing creation to be the owner by default:
       owner: { id: userId } as any,
-      uploader: { id: userId } as any,
-      metadata,
+      ownerId: userId,
+
+      metadata: parsedMetadata,
     });
+
+    return this.repository.save(docEntity);
   }
 
+  // ---- Get a single Document ----
   async getDocument(id: string, userId: string): Promise<Document> {
-    // Removed 'verificationRequests' and 'verifiedByOrganizations' from relations
     return this.findOne({
       where: { id, ownerId: userId },
       relations: [
@@ -51,59 +73,70 @@ export class DocumentsRepository extends BaseRepository<Document> {
     });
   }
 
+  // ---- Update Document ----
   async updateDocument(
     id: string,
     updateDocumentDto: UpdateDocumentDto,
     userId: string,
   ): Promise<Document> {
+    let parsedMetadata: any;
+    if (updateDocumentDto.metadata) {
+      try {
+        parsedMetadata = JSON.parse(updateDocumentDto.metadata);
+      } catch (err) {
+        this.logger.error(
+          'Invalid JSON in updateDocument metadata',
+          'DocumentsRepository.updateDocument',
+        );
+      }
+    }
+
     const updateData: Partial<Document> = {
       ...updateDocumentDto,
-      metadata: updateDocumentDto.metadata
-        ? JSON.parse(updateDocumentDto.metadata)
-        : undefined,
+      metadata: parsedMetadata,
     };
 
-    // Convert documentType if it's still a string
-    // updateData.documentType = DocumentType[updateDocumentDto.documentType.toUpperCase()];
-
-    await this.update({ id, owner: { id: userId } }, updateData);
+    await this.update({ id, ownerId: userId }, updateData);
     return this.getDocument(id, userId);
   }
 
+  // ---- Soft Delete Document ----
   async softDeleteDocument(id: string, userId: string): Promise<void> {
     await this.update({ id, ownerId: userId }, { isDeleted: true });
   }
 
-  // Document Submission and Workflow
+  // ---- Submit Document for Verification ----
   async submitDocumentForVerification(
     id: string,
     organizationIds: string[],
     userId: string,
   ): Promise<Document> {
     const document = await this.getDocument(id, userId);
+    if (!document) {
+      throw new NotFoundException(`Document with ID "${id}" not found`);
+    }
     document.status = DocumentStatus.PENDING_VERIFICATION;
-    // Previously: document.verificationRequests = organizationIds.map(...)
-    // Instead, handle the creation of Verification entities outside this method,
-    // or add logic here to create Verifications.
     return this.save(document);
   }
 
+  // ---- Change Document Status ----
   async changeDocumentStatus(
     id: string,
     newStatus: DocumentStatus,
     organizationId: string,
   ): Promise<Document> {
     const document = await this.findOne(id);
+    if (!document) {
+      throw new NotFoundException(`Document with ID "${id}" not found`);
+    }
     document.status = newStatus;
-
-    // Assuming verificationStatuses is now a Record<string, DocumentStatus>
     document.verificationStatuses = document.verificationStatuses || {};
     document.verificationStatuses[organizationId] = newStatus;
 
     return this.save(document);
   }
 
-  // Document Retrieval and Listing
+  // ---- Document Retrieval & Listing ----
   async getDocumentsByUser(
     userId: string,
     filters: DocumentFilters,
@@ -132,7 +165,7 @@ export class DocumentsRepository extends BaseRepository<Document> {
     orgId: string,
     filters: DocumentFilters,
   ): Promise<PaginationResult<Document>> {
-    const queryBuilder = this.repository
+    const qb = this.repository
       .createQueryBuilder('document')
       .innerJoin('document.organizationsWithAccess', 'org', 'org.id = :orgId', {
         orgId,
@@ -140,34 +173,29 @@ export class DocumentsRepository extends BaseRepository<Document> {
       .where('document.isDeleted = :isDeleted', { isDeleted: false });
 
     if (filters.status) {
-      queryBuilder.andWhere('document.status = :status', {
-        status: filters.status,
-      });
+      qb.andWhere('document.status = :status', { status: filters.status });
     }
 
     const page = filters.page || 1;
     const limit = filters.limit || 10;
 
-    queryBuilder
-      .orderBy('document.createdAt', 'DESC')
+    qb.orderBy('document.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
-    const [data, total] = await queryBuilder.getManyAndCount();
+    const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit };
   }
 
   async searchDocuments(
     searchParams: DocumentSearchParams,
   ): Promise<PaginationResult<Document>> {
-    const queryBuilder = this.repository
+    const qb = this.repository
       .createQueryBuilder('document')
       .where('document.isDeleted = :isDeleted', { isDeleted: false });
 
     if (searchParams.searchTerm) {
-      // Depending on how documentType is stored (enum in DB), this ILIKE might not work well.
-      // Consider casting or only searching text fields.
-      queryBuilder.andWhere(
+      qb.andWhere(
         '(document.title ILIKE :searchTerm OR ' +
           'document.description ILIKE :searchTerm OR ' +
           'document.documentType::text ILIKE :searchTerm OR ' +
@@ -177,19 +205,19 @@ export class DocumentsRepository extends BaseRepository<Document> {
     }
 
     if (searchParams.status) {
-      queryBuilder.andWhere('document.status = :status', {
+      qb.andWhere('document.status = :status', {
         status: searchParams.status,
       });
     }
 
     if (searchParams.startDate) {
-      queryBuilder.andWhere('document.createdAt >= :startDate', {
+      qb.andWhere('document.createdAt >= :startDate', {
         startDate: searchParams.startDate,
       });
     }
 
     if (searchParams.endDate) {
-      queryBuilder.andWhere('document.createdAt <= :endDate', {
+      qb.andWhere('document.createdAt <= :endDate', {
         endDate: searchParams.endDate,
       });
     }
@@ -197,16 +225,15 @@ export class DocumentsRepository extends BaseRepository<Document> {
     const page = searchParams.page || 1;
     const limit = searchParams.limit || 10;
 
-    queryBuilder
-      .orderBy('document.createdAt', 'DESC')
+    qb.orderBy('document.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
-    const [data, total] = await queryBuilder.getManyAndCount();
+    const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit };
   }
 
-  // Access Control
+  // ---- Access Control ----
   async grantDocumentAccess(
     documentId: string,
     organizationId: string,
@@ -239,7 +266,7 @@ export class DocumentsRepository extends BaseRepository<Document> {
     }
   }
 
-  // Document Expiration
+  // ---- Expiration ----
   async checkDocumentExpiration(): Promise<void> {
     const result = await this.repository
       .createQueryBuilder()
@@ -257,32 +284,38 @@ export class DocumentsRepository extends BaseRepository<Document> {
     );
   }
 
+  // ---- Re-Verification ----
   async initiateReVerification(
     documentId: string,
     organizationIds: string[],
     userId: string,
   ): Promise<Document> {
     const document = await this.getDocument(documentId, userId);
+    if (!document) {
+      throw new NotFoundException(
+        `Document with ID "${documentId}" not found for user ${userId}`,
+      );
+    }
     document.status = DocumentStatus.PENDING_VERIFICATION;
-    // Previously: document.verificationRequests = ...
-    // If you need to track re-verification requests, consider creating Verification entities.
     return this.save(document);
   }
 
-  // Composite Status
+  // ---- Composite Status ----
   async getDocumentCompositeStatus(documentId: string): Promise<{
     overallStatus: DocumentStatus;
     organizationStatuses: Record<string, DocumentStatus>;
   }> {
     const document = await this.findOne(documentId);
-    // Assuming verificationStatuses is now a Record<string, DocumentStatus>
+    if (!document) {
+      throw new NotFoundException(`Document with ID "${documentId}" not found`);
+    }
     return {
       overallStatus: document.status,
       organizationStatuses: document.verificationStatuses || {},
     };
   }
 
-  // New methods
+  // ---- Additional Methods ----
   async getDocumentsByIds(ids: string[]): Promise<Document[]> {
     return this.repository.find({
       where: { id: In(ids), isDeleted: false },

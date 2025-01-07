@@ -16,8 +16,8 @@ export class SeedService implements OnModuleInit {
   }
 
   private async seedAdminUser(): Promise<void> {
-    const adminEmail = 'admin@example.com';
-    const desiredPassword = 'ChangeMe123!';
+    const adminEmail = 'abebe@docs.com';
+    const desiredPassword = 'Abe_Kebe@92!';
 
     try {
       // 1. Attempt to find an existing admin user by email.
@@ -27,7 +27,7 @@ export class SeedService implements OnModuleInit {
       // 2. If found => log info + skip, else => create it
       if (existingAdmin) {
         this.logger.log(
-          `Seed Admin user [${adminEmail}] already exists. Skipping...`,
+          `Admin user already exists: ${adminEmail} (ID: ${existingAdmin.id})`,
           'SeedService',
         );
         return;
@@ -35,15 +35,17 @@ export class SeedService implements OnModuleInit {
 
       // 3. Since no user was found, proceed with creation.
       this.logger.info(
-        `No admin user found for [${adminEmail}]. Proceeding with seeding...`,
+        `No admin user found for: ${adminEmail}. Proceeding with seeding...`,
         'SeedService',
       );
 
       const adminUserDto: CreateAdminUserDto = {
         email: adminEmail,
         password: desiredPassword,
-        firstName: 'Seeded',
-        lastName: 'Admin',
+        phoneNumber: '0912345678',
+        firstName: 'Abebe',
+        lastName: 'Kebede',
+        userName: 'AbebeK',
         role: GlobalRole.PLATFORM_SUPER_ADMIN,
       };
 
@@ -53,12 +55,18 @@ export class SeedService implements OnModuleInit {
         '00000000-0000-0000-0000-000000000000',
       );
 
+      // 5. Log the successful creation of the admin user.
       this.logger.log(
-        `Seeded a new admin user: ${createdAdmin.email} with ID: ${createdAdmin.id}`,
+        `Seeded a new admin user: ${createdAdmin.email} (ID: ${createdAdmin.id})`,
         'SeedService',
       );
     } catch (error) {
-      this.logger.error('Error while seeding admin user', 'SeedService', error);
+      // Log the error with context
+      this.logger.error(
+        `Error while seeding admin user: ${adminEmail}`,
+        'SeedService',
+        { error },
+      );
     }
   }
 }

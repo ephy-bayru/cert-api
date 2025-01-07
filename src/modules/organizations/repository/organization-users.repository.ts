@@ -4,12 +4,7 @@ import {
   ConflictException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import {
-  DataSource,
-  FindManyOptions,
-  FindOptionsWhere,
-  IsNull,
-} from 'typeorm';
+import { DataSource, FindManyOptions, FindOptionsWhere, IsNull } from 'typeorm';
 import { BaseRepository } from '@core/repository/base.repository';
 import { LoggerService } from '@common/services/logger.service';
 import { OrganizationUser } from '../entities/organization-user.entity';
@@ -354,13 +349,14 @@ export class OrganizationUsersRepository extends BaseRepository<OrganizationUser
   }
 
   /**
-   * Updates the role of an organization user
+   * Updates the roles of an organization user.
+   * Accepts multiple roles to support multi-role functionality.
    * Access: Organization Admin
    * Priority: Medium
    */
-  async updateOrganizationUserRole(
+  async updateOrganizationUserRoles(
     userId: string,
-    role: GlobalRole,
+    roles: GlobalRole[],
     updatedById: string,
   ): Promise<void> {
     try {
@@ -370,21 +366,22 @@ export class OrganizationUsersRepository extends BaseRepository<OrganizationUser
 
       this.validateOrganizationUser(user);
 
-      user.role = role;
+      // Assign the provided array of roles to the user
+      user.roles = roles;
       user.updatedBy = updatedById;
       user.updatedAt = new Date();
 
       await this.repository.save(user);
 
-      // Log role update
+      // Log role update with multiple roles
       this.logger.info(
-        `User '${user.email}' role updated to '${role}' by user '${updatedById}'`,
+        `User '${user.email}' roles updated to '${JSON.stringify(roles)}' by user '${updatedById}'`,
         'OrganizationUsersRepository',
-        { userId: user.id, updatedById, role },
+        { userId: user.id, updatedById, roles: user.roles },
       );
     } catch (error) {
       this.logger.error(
-        'Error updating organization user role',
+        'Error updating organization user roles',
         'OrganizationUsersRepository',
         { error },
       );
@@ -393,7 +390,7 @@ export class OrganizationUsersRepository extends BaseRepository<OrganizationUser
         throw error;
       } else {
         throw new InternalServerErrorException(
-          'Failed to update organization user role',
+          'Failed to update organization user roles',
         );
       }
     }

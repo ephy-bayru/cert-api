@@ -26,6 +26,10 @@ export class CreateAdminUserDto {
   lastName?: string;
 
   @IsOptional()
+  @Length(1, 100, { message: 'Username must be less than 100 characters' })
+  userName?: string;
+
+  @IsOptional()
   @IsPhoneNumber(undefined, { message: 'Invalid phone number' })
   phoneNumber?: string;
 

@@ -5,11 +5,13 @@ import { AdminUsersRepository } from '@modules/admin/repositories/admin-users.re
 import { OrganizationUsersRepository } from '@modules/organizations/repository/organization-users.repository';
 import { UsersRepository } from '@modules/users/repository/users-repository';
 import { OrganizationStatus } from '@modules/organizations/entities/organization-status.enum';
+import { GlobalRole } from '@common/enums/global-role.enum';
 
 export type LoginPayload = {
   id: string;
-  role: string;
+  role: GlobalRole[];
   email?: string;
+  userName?: string;
   fullName?: string;
   organizationId?: string;
   twoFactorEnabled?: boolean;
@@ -50,12 +52,12 @@ export class AuthRepository {
 
     return {
       id: adminUser.id,
-      role: adminUser.role, // e.g. 'SUPER_ADMIN' or 'ADMIN'
+      role: adminUser.roles,
       email: adminUser.email,
       fullName:
         `${adminUser.firstName ?? ''} ${adminUser.lastName ?? ''}`.trim(),
       twoFactorEnabled: !!adminUser.twoFactorEnabled,
-      // you can optionally add additionalInfo
+      // additionalInfo can be added here if needed
     };
   }
 
@@ -94,7 +96,7 @@ export class AuthRepository {
 
     return {
       id: orgUser.id,
-      role: orgUser.role, // e.g. 'DOCUMENT_MANAGER'
+      role: orgUser.roles, // orgUser.role is now an array of GlobalRole
       email: orgUser.email,
       fullName: `${orgUser.firstName ?? ''} ${orgUser.lastName ?? ''}`.trim(),
       organizationId: orgUser.organizationId,
@@ -126,7 +128,11 @@ export class AuthRepository {
 
     return {
       id: user.id,
-      role: user.role ?? 'REG_USER',
+      role:
+        user.roles && user.roles.length > 0
+          ? user.roles
+          : [GlobalRole.END_USER],
+      // Fallback to [GlobalRole.END_USER] if no roles are assigned
       email: user.email,
       fullName: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
       twoFactorEnabled: !!user.twoFactorEnabled,

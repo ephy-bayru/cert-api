@@ -69,7 +69,8 @@ export class UploadDocumentDto {
   uploadingOrganizationId?: string;
 
   @ApiPropertyOptional({
-    description: 'ID of the owner of the document',
+    description:
+      'ID of the owner of the document (required if uploadingOrganizationId is present)',
     format: 'uuid',
   })
   @ValidateIf((o) => o.uploadingOrganizationId)
@@ -100,5 +101,4 @@ export class UploadDocumentDto {
   @IsOptional()
   @IsString()
   metadata?: string;
-
 }

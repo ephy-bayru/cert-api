@@ -108,9 +108,10 @@ export class AuthService {
   private mapLoginPayloadToResponse(payload: LoginPayload): UserDetailsDto {
     const userDto: UserDetailsDto = {
       id: payload.id,
+      userName: payload.userName ?? 'unknown',
       email: payload.email ?? 'unknown@example.com',
       fullName: payload.fullName ?? 'Unknown User',
-      role: payload.role,
+      roles: payload.role,
     };
 
     if (payload.organizationId) {

@@ -8,7 +8,6 @@ import {
   OneToOne,
   Index,
   DeleteDateColumn,
-  ManyToMany,
   Unique,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
@@ -28,7 +27,7 @@ import { GlobalRole } from '@common/enums/global-role.enum';
  * - Upload and manage their documents
  * - Submit documents for verification to organizations
  * - Track verification status
- * - Grant access to their documents
+ * - Possibly receive a document assigned by an organization
  */
 @Entity('users')
 @Unique(['email', 'userName', 'fcn', 'fin'])
@@ -46,7 +45,6 @@ export class User {
   password: string;
 
   // Personal Information
-  // These fields are essential for document verification
   @Column({ nullable: true, length: 100 })
   firstName?: string;
 
@@ -60,7 +58,6 @@ export class User {
   @Column({ unique: true, nullable: true, length: 100 })
   userName?: string;
 
-  // Important identification fields for document verification
   @Index()
   @Column({ nullable: true, unique: true, length: 20 })
   phoneNumber?: string;
@@ -72,10 +69,10 @@ export class User {
   gender?: string;
 
   @Column({ nullable: true, unique: true, length: 16 })
-  fcn?: string; // National ID number
+  fcn?: string; // National ID
 
   @Column({ nullable: true, unique: true, length: 12 })
-  fin?: string; // Tax ID number
+  fin?: string; // Tax ID
 
   // Authentication and security
   @Column({
@@ -91,11 +88,11 @@ export class User {
   @Column({
     type: 'enum',
     enum: GlobalRole,
-    default: GlobalRole.END_USER,
+    array: true,
+    default: [GlobalRole.END_USER],
   })
-  role: GlobalRole;
+  roles: GlobalRole[];
 
-  // Two-factor authentication
   @Column({ default: false })
   twoFactorEnabled: boolean;
 
@@ -124,7 +121,7 @@ export class User {
   @OneToOne(() => Address, (address) => address.user, { cascade: true })
   address: Address;
 
-  // Account status and security
+  // Account status
   @Index()
   @Column({
     type: 'enum',
@@ -146,23 +143,21 @@ export class User {
   isAccountLocked: boolean;
 
   // Document Management
-  // Core functionality for document ownership and submission
   @OneToMany(() => Document, (document) => document.owner)
   ownedDocuments: Document[];
 
   @OneToMany(() => Document, (document) => document.uploader)
   uploadedDocuments: Document[];
 
-  @ManyToMany(() => Document, (document) => document.usersWithAccess)
-  accessibleDocuments: Document[];
+  // (Removed the many-to-many "accessibleDocuments" to reflect "can't share with multiple users.")
 
   // Verification Management
-  // Track document verifications initiated by the user
   @OneToMany(() => Verification, (verification) => verification.initiatedBy)
   verificationRequests: Verification[];
 
   // Blockchain Integration
-  @Column({ nullable: true, unique: true, length: 42 })
+  @Index({ unique: true })
+  @Column({ nullable: true, length: 42 })
   blockchainAddress?: string;
 
   // Notifications
@@ -192,7 +187,6 @@ export class User {
   @Column({ nullable: true })
   updatedBy?: string;
 
-  // Localization
   @Column({ default: 'en' })
   locale: string;
 

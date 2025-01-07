@@ -8,17 +8,18 @@ import {
 } from '@nestjs/swagger';
 import { Document } from '../entities/document.entity';
 import { DocumentStatus } from '../entities/document-status.enum';
-import { CreateDocumentDto } from '../dtos/create-document.dto';
 import { UpdateDocumentDto } from '../dtos/update-document.dto';
+import { UploadDocumentDto } from '../dtos/upload-document.dto';
+import { DocumentResponseDto } from '../dtos/document-response.dto';
 
-export function CreateDocumentDocs() {
+export function UploadDocumentDocs() {
   return applyDecorators(
-    ApiOperation({ summary: 'Create a new document' }),
-    ApiBody({ type: CreateDocumentDto }),
+    ApiOperation({ summary: 'Upload a new document' }),
+    ApiBody({ type: UploadDocumentDto }),
     ApiResponse({
       status: HttpStatus.CREATED,
-      description: 'The document has been successfully created.',
-      type: Document,
+      description: 'The document has been successfully uploaded.',
+      type: DocumentResponseDto,
     }),
   );
 }

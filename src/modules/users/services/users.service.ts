@@ -127,8 +127,10 @@ export class UsersService {
       // Prevent non-admin users from changing role or status
       if (
         (updateUserDto.role || updateUserDto.status) &&
-        ![GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN].includes(
-          currentUser.role,
+        !currentUser.roles?.some((role) =>
+          [GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN].includes(
+            role,
+          ),
         )
       ) {
         throw new ForbiddenException(
@@ -196,8 +198,9 @@ export class UsersService {
     currentUser: User,
   ): Promise<UserResponseDto> {
     if (
-      currentUser.role !== GlobalRole.PLATFORM_ADMIN &&
-      currentUser.role !== GlobalRole.ORG_SUPER_ADMIN
+      !currentUser.roles?.some((role) =>
+        [GlobalRole.PLATFORM_ADMIN, GlobalRole.ORG_SUPER_ADMIN].includes(role),
+      )
     ) {
       throw new ForbiddenException(
         'Only platform or org super admins can do that',

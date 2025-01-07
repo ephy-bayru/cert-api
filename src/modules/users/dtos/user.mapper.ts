@@ -7,7 +7,7 @@ import { UserStatus } from '../entities/user-status.enum';
 
 @Injectable()
 export class UserMapper {
-  constructor(private configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {}
 
   toResponseDto(user: User): UserResponseDto {
     const isActive = user.status === UserStatus.ACTIVE;
@@ -21,7 +21,7 @@ export class UserMapper {
         .join(' ')
         .trim(),
       isActive,
-      role: user.role,
+      roles: user.roles, // Use roles array here
       status: user.status,
       firstName: user.firstName,
       lastName: user.lastName,
@@ -59,7 +59,10 @@ export class UserMapper {
       accessToken,
       refreshToken,
       user: this.toResponseDto(user),
-      expiresIn: this.configService.get<number>('JWT_EXPIRATION_TIME', 3600),
+      expiresIn: this.configService.get<number>(
+        'JWT_EXPIRATION_TIME',
+        8 * 60 * 60,
+      ),
     };
   }
 }

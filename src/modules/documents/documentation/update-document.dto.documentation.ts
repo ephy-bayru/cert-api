@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsArray, IsEnum, IsDate } from 'class-validator';
 import { DocumentStatus } from '../entities/document-status.enum';
+import { DocumentType } from '../entities/document-type.enum';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateDocumentDto {
@@ -13,10 +14,13 @@ export class UpdateDocumentDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Type of the document' })
+  @ApiPropertyOptional({
+    description: 'Type of the document',
+    enum: DocumentType,
+  })
   @IsOptional()
-  @IsString()
-  documentType?: string;
+  @IsEnum(DocumentType)
+  documentType?: DocumentType;
 
   @ApiPropertyOptional({
     description: 'Expiry date of the document',

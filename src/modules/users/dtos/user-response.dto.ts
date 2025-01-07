@@ -9,7 +9,7 @@ export class UserResponseDto {
   userName: string;
   fullName: string;
   isActive: boolean;
-  role: GlobalRole;
+  roles: GlobalRole[];
   status: UserStatus;
   firstName: string;
   lastName: string;

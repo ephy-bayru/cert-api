@@ -10,10 +10,11 @@ import {
   HttpStatus,
   HttpCode,
   ParseUUIDPipe,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { DocumentsService } from '../services/documents.service';
-import { CreateDocumentDto } from '../dtos/create-document.dto';
 import { UpdateDocumentDto } from '../dtos/update-document.dto';
 import { Document } from '../entities/document.entity';
 import { DocumentStatus } from '../entities/document-status.enum';
@@ -23,9 +24,8 @@ import {
   DocumentSearchParams,
 } from '../interfaces/document-filters.interface';
 import { User } from '@common/decorators/user.decorator';
-
 import {
-  CreateDocumentDocs,
+  UploadDocumentDocs,
   GetDocumentDocs,
   UpdateDocumentDocs,
   DeleteDocumentDocs,
@@ -41,6 +41,8 @@ import {
   CountDocumentsByStatusDocs,
   GetRecentDocumentsDocs,
 } from '../documentation/documents.controller.documentation';
+import { UploadDocumentDto } from '../dtos/upload-document.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Documents')
 // @ApiBearerAuth()
@@ -53,12 +55,19 @@ export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
 
   @Post()
-  @CreateDocumentDocs()
-  async createDocument(
-    @Body() createDocumentDto: CreateDocumentDto,
+  @UploadDocumentDocs()
+  // Example if you want file upload via multipart/form-data:
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadDocument(
+    @Body() uploadDocumentDto: UploadDocumentDto,
     @User('id') userId: string,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<Document> {
-    return this.documentsService.createDocument(createDocumentDto, userId);
+    return this.documentsService.createDocument(
+      uploadDocumentDto,
+      userId,
+      file,
+    );
   }
 
   @Get(':id')

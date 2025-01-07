@@ -3,14 +3,7 @@ import {
   ConflictException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import {
-  Brackets,
-  DataSource,
-  EntityManager,
-  FindOptionsWhere,
-  IsNull,
-  QueryRunner,
-} from 'typeorm';
+import { Brackets, DataSource, FindOptionsWhere, IsNull } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dtos/create-user.dto';
 import { BaseRepository } from 'src/core/repository/base.repository';
@@ -32,12 +25,6 @@ export class UsersRepository extends BaseRepository<User> {
    * Creates a new user with default role and status.
    * Ensures unique fields are not duplicated.
    */
-
-  /**
-   * Creates a user (simple approach: no explicit transaction).
-   * If you need to coordinate multiple DB actions that must all succeed or fail,
-   * do use a transaction. For *just* creating one row, a direct save can suffice.
-   */
   async createUser(userData: CreateUserDto): Promise<User> {
     await this.checkUniqueFields(userData);
 
@@ -49,10 +36,10 @@ export class UsersRepository extends BaseRepository<User> {
       },
     );
 
-    // Build user entity
+    // Build user entity with default roles as an array
     const newUser = this.repository.create({
       ...userData,
-      role: GlobalRole.END_USER,
+      roles: [GlobalRole.END_USER],
       status: UserStatus.PENDING_ACTIVATION,
     });
 
