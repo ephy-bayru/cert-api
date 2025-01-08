@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsPhoneNumber,
   Length,
+  IsArray,
 } from 'class-validator';
 
 export class CreateAdminUserDto {
@@ -34,6 +35,7 @@ export class CreateAdminUserDto {
   phoneNumber?: string;
 
   @IsOptional()
-  @IsEnum(GlobalRole, { message: 'Invalid role' })
-  role?: GlobalRole;
+  @IsEnum(GlobalRole, { each: true })
+  @IsArray()
+  roles: GlobalRole[]; 
 }

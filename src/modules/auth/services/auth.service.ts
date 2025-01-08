@@ -85,7 +85,7 @@ export class AuthService {
     // Build the actual JWT payload
     const tokenPayload: JwtPayload = {
       sub: payload.id,
-      role: payload.role,
+      roles: payload.role,
       orgId: payload.organizationId,
     };
 

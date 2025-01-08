@@ -16,6 +16,7 @@ export type LoginPayload = {
   organizationId?: string;
   twoFactorEnabled?: boolean;
   additionalInfo?: Record<string, any>;
+  userType: string;
 };
 
 @Injectable()
@@ -54,10 +55,11 @@ export class AuthRepository {
       id: adminUser.id,
       role: adminUser.roles,
       email: adminUser.email,
+      userName: adminUser.userName,
       fullName:
         `${adminUser.firstName ?? ''} ${adminUser.lastName ?? ''}`.trim(),
       twoFactorEnabled: !!adminUser.twoFactorEnabled,
-      // additionalInfo can be added here if needed
+      userType: 'admin'
     };
   }
 
@@ -96,11 +98,13 @@ export class AuthRepository {
 
     return {
       id: orgUser.id,
-      role: orgUser.roles, // orgUser.role is now an array of GlobalRole
+      role: orgUser.roles,
       email: orgUser.email,
+      userName: orgUser.userName,
       fullName: `${orgUser.firstName ?? ''} ${orgUser.lastName ?? ''}`.trim(),
       organizationId: orgUser.organizationId,
       twoFactorEnabled: !!orgUser.twoFactorEnabled,
+      userType: 'org'
     };
   }
 
@@ -132,10 +136,11 @@ export class AuthRepository {
         user.roles && user.roles.length > 0
           ? user.roles
           : [GlobalRole.END_USER],
-      // Fallback to [GlobalRole.END_USER] if no roles are assigned
       email: user.email,
+      userName: user.userName,
       fullName: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
       twoFactorEnabled: !!user.twoFactorEnabled,
+      userType: 'user'
     };
   }
 }

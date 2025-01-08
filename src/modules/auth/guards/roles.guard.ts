@@ -28,19 +28,23 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    if (!user || !user.role) {
-      throw new ForbiddenException('No user or user.role found in request');
+    if (!user || (!user.roles && !user.role)) {
+      throw new ForbiddenException('No user or user.roles found in request');
     }
 
-    // If user’s top-level role or inherited roles match any required role => granted
+    // Ensure we have an array of roles
+    const userRoles: GlobalRole[] = user.roles ?? [user.role];
+
     for (const requiredRole of requiredRoles) {
-      if (this.hasRoleOrInherited(user.role, requiredRole)) {
-        return true;
+      for (const userRole of userRoles) {
+        if (this.hasRoleOrInherited(userRole, requiredRole)) {
+          return true;
+        }
       }
     }
 
     throw new ForbiddenException(
-      `User role '${user.role}' does not meet required roles: [${requiredRoles.join(', ')}]`,
+      `User roles '${userRoles.join(', ')}' do not meet required roles: [${requiredRoles.join(', ')}]`,
     );
   }
 

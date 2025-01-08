@@ -46,7 +46,7 @@ export class SeedService implements OnModuleInit {
         firstName: 'Abebe',
         lastName: 'Kebede',
         userName: 'AbebeK',
-        role: GlobalRole.PLATFORM_SUPER_ADMIN,
+        roles: [GlobalRole.PLATFORM_SUPER_ADMIN, GlobalRole.PLATFORM_ADMIN],
       };
 
       // 4. Actually create the user (pass system ID or similar for "createdBy").
