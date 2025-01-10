@@ -136,6 +136,7 @@ export class OrganizationsRepository extends BaseRepository<Organization> {
       this.logger.log('QueryRunner released.');
     }
   }
+
   /**
    * Activates a pending organization and its admin users
    * Access: Restricted - System Admin Only
@@ -163,7 +164,10 @@ export class OrganizationsRepository extends BaseRepository<Organization> {
           `Organization with ID '${organizationId}' not found`,
           'OrganizationsRepository',
         );
-        throw new NotFoundException('Organization not found');
+        throw new NotFoundException({
+          errorCode: 'ORG_NOT_FOUND',
+          message: 'We could not locate the requested organization. Please verify the ID and try again.',
+        });
       }
 
       // Check if organization is in a pending status
@@ -272,7 +276,10 @@ export class OrganizationsRepository extends BaseRepository<Organization> {
           `Organization with ID '${organizationId}' not found`,
           'OrganizationsRepository',
         );
-        throw new NotFoundException('Organization not found');
+        throw new NotFoundException({
+          errorCode: 'ORG_NOT_FOUND',
+          message: 'We could not locate the requested organization. Please verify the ID and try again.',
+        });
       }
 
       // Check if organization is active
@@ -376,7 +383,10 @@ export class OrganizationsRepository extends BaseRepository<Organization> {
           `Organization with ID '${organizationId}' not found for archiving`,
           'OrganizationsRepository',
         );
-        throw new NotFoundException('Organization not found');
+        throw new NotFoundException({
+          errorCode: 'ORG_NOT_FOUND',
+          message: 'We could not locate the requested organization. Please verify the ID and try again.',
+        });
       }
 
       // Check if the organization is already archived
@@ -479,7 +489,10 @@ export class OrganizationsRepository extends BaseRepository<Organization> {
           `Organization with ID '${organizationId}' not found for updating`,
           'OrganizationsRepository',
         );
-        throw new NotFoundException('Organization not found');
+        throw new NotFoundException({
+          errorCode: 'ORG_NOT_FOUND',
+          message: 'We could not locate the requested organization. Please verify the ID and try again.',
+        });
       }
 
       // Validate uniqueness if name or contact email is being updated
@@ -590,7 +603,10 @@ export class OrganizationsRepository extends BaseRepository<Organization> {
           `Organization with ID '${organizationId}' not found`,
           'OrganizationsRepository',
         );
-        throw new NotFoundException('Organization not found');
+        throw new NotFoundException({
+          errorCode: 'ORG_NOT_FOUND',
+          message: 'We could not locate the requested organization. Please verify the ID and try again.',
+        });
       }
 
       return organization;
@@ -785,7 +801,10 @@ export class OrganizationsRepository extends BaseRepository<Organization> {
         `Organization with ID '${organizationId}' not found`,
         'OrganizationsRepository',
       );
-      throw new NotFoundException('Organization not found');
+      throw new NotFoundException({
+        errorCode: 'ORG_NOT_FOUND',
+        message: 'We could not locate the requested organization. Please verify the ID and try again.',
+      });
     }
 
     if (organization.status !== OrganizationStatus.ACTIVE) {

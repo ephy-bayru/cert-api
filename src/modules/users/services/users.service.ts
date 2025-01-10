@@ -77,8 +77,12 @@ export class UsersService {
 
   /**
    * Creates a new user with default role and status.
+   * Optionally sets the `createdBy` field if a current user is provided.
    */
-  async createUser(createUserDto: CreateUserDto): Promise<UserResponseDto> {
+  async createUser(
+    createUserDto: CreateUserDto,
+    currentUser?: User,
+  ): Promise<UserResponseDto> {
     try {
       // Ensure unique fields
       await this.checkUniqueFields(createUserDto);
@@ -88,8 +92,12 @@ export class UsersService {
       }
       createUserDto.password = await bcrypt.hash(createUserDto.password, 10);
 
-      // Create user via repository method
-      const newUser = await this.usersRepository.createUser(createUserDto);
+      const userData = {
+        ...createUserDto,
+        ...(currentUser && { createdBy: currentUser.id }),
+      };
+
+      const newUser = await this.usersRepository.createUser(userData);
 
       this.logger.log('User created successfully', 'UsersService', {
         userId: newUser.id,
@@ -120,24 +128,32 @@ export class UsersService {
     currentUser: User,
   ): Promise<UserResponseDto> {
     try {
+      // Fetch the user to be updated
       const existingUser = await this.usersRepository.getUserById(id);
+
+      // Permission check: allow if self-update or admin
+      const isSelfUpdate = currentUser.id === id;
+      const isAdmin = currentUser.roles?.some((role) =>
+        [GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN].includes(
+          role,
+        ),
+      );
+      if (!isSelfUpdate && !isAdmin) {
+        throw new ForbiddenException(
+          'You are not allowed to update this user.',
+        );
+      }
 
       await this.validateUniqueFields(updateUserDto, existingUser);
 
-      // Prevent non-admin users from changing role or status
-      if (
-        (updateUserDto.role || updateUserDto.status) &&
-        !currentUser.roles?.some((role) =>
-          [GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN].includes(
-            role,
-          ),
-        )
-      ) {
+      // Prevent non-admins from changing role or status
+      if ((updateUserDto.role || updateUserDto.status) && !isAdmin) {
         throw new ForbiddenException(
           'Only platform or super admins can change role or status',
         );
       }
 
+      // Hash new password if provided
       if (updateUserDto.password) {
         updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
       }
@@ -154,8 +170,9 @@ export class UsersService {
         }
       }
 
-      // Update user fields
+      // Update user fields and set updatedBy
       Object.assign(existingUser, updateUserDto);
+      existingUser.updatedBy = currentUser.id;
 
       const updatedUser = await this.usersRepository.save(existingUser);
 
@@ -164,6 +181,7 @@ export class UsersService {
       });
       return this.userMapper.toResponseDto(updatedUser);
     } catch (error) {
+      // Error handling remains unchanged
       if (
         error instanceof NotFoundException ||
         error instanceof ConflictException ||
@@ -182,11 +200,32 @@ export class UsersService {
   /**
    * Marks a user as deleted.
    */
-  async deleteUser(id: string): Promise<void> {
+  async deleteUser(
+    id: string,
+    currentUser: User,
+  ): Promise<{ message: string }> {
+    // Permission check: allow if self-delete or admin
+    const isSelfDelete = currentUser.id === id;
+    const isAdmin = currentUser.roles?.some((role) =>
+      [GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN].includes(
+        role,
+      ),
+    );
+    if (!isSelfDelete && !isAdmin) {
+      throw new ForbiddenException('You are not allowed to delete this user.');
+    }
+
+    // Optionally update the user record with updatedBy before deletion
+    const userToDelete = await this.usersRepository.getUserById(id);
+    userToDelete.updatedBy = currentUser.id;
+    await this.usersRepository.save(userToDelete);
+
     await this.usersRepository.deleteUser(id);
     this.logger.log('User marked as deleted', 'UsersService', {
       userId: id,
+      deletedBy: currentUser.id,
     });
+    return { message: `User with ID ${id} deleted successfully!` };
   }
 
   /**

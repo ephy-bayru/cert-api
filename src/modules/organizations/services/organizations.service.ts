@@ -1,5 +1,8 @@
 import {
+  ConflictException,
+  HttpStatus,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { UpdateOrganizationDto } from '../dtos/update-organization.dto';
@@ -52,7 +55,12 @@ export class OrganizationService {
     organizationId: string,
     activatedById: string,
     reason?: string,
-  ): Promise<void> {
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: any;
+    timestamp: string;
+  }> {
     try {
       await this.organizationsRepository.activateOrganization(
         organizationId,
@@ -66,6 +74,12 @@ export class OrganizationService {
           organizationId,
         },
       );
+      return {
+        statusCode: 200,
+        message: 'Organization activated successfully',
+        data: null,
+        timestamp: new Date().toISOString(),
+      };
     } catch (error) {
       this.logger.error(
         'Failed to activate organization',
@@ -75,7 +89,13 @@ export class OrganizationService {
           organizationId,
         },
       );
-      throw error;
+      if (
+        error instanceof ConflictException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to activate organization');
     }
   }
 
@@ -83,7 +103,12 @@ export class OrganizationService {
     organizationId: string,
     suspendedById: string,
     reason: string,
-  ): Promise<void> {
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: any;
+    timestamp: string;
+  }> {
     try {
       await this.organizationsRepository.suspendOrganization(
         organizationId,
@@ -93,20 +118,27 @@ export class OrganizationService {
       this.logger.info(
         'Organization suspended successfully',
         'OrganizationService',
-        {
-          organizationId,
-        },
+        { organizationId },
       );
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Organization suspended successfully',
+        data: null,
+        timestamp: new Date().toISOString(),
+      };
     } catch (error) {
       this.logger.error(
         'Failed to suspend organization',
         'OrganizationService',
-        {
-          error,
-          organizationId,
-        },
+        { error, organizationId },
       );
-      throw error;
+      if (
+        error instanceof ConflictException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to suspend organization');
     }
   }
 
@@ -114,7 +146,12 @@ export class OrganizationService {
     organizationId: string,
     archivedById: string,
     reason: string,
-  ): Promise<void> {
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: any;
+    timestamp: string;
+  }> {
     try {
       await this.organizationsRepository.archiveOrganization(
         organizationId,
@@ -124,20 +161,21 @@ export class OrganizationService {
       this.logger.info(
         'Organization archived successfully',
         'OrganizationService',
-        {
-          organizationId,
-        },
+        { organizationId },
       );
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Organization archived successfully',
+        data: null,
+        timestamp: new Date().toISOString(),
+      };
     } catch (error) {
       this.logger.error(
         'Failed to archive organization',
         'OrganizationService',
-        {
-          error,
-          organizationId,
-        },
+        { error, organizationId },
       );
-      throw error;
+      throw new InternalServerErrorException('Failed to archive organization');
     }
   }
 

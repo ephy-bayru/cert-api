@@ -80,7 +80,12 @@ export class UsersController {
    */
   @Get('search')
   @SearchUsersDocs()
-  @UseGuards(JwtAuthGuard) // e.g. at least require them to be logged in
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    GlobalRole.PLATFORM_ADMIN,
+    GlobalRole.PLATFORM_SUPER_ADMIN,
+    GlobalRole.END_USER,
+  )
   @ApiBearerAuth()
   async searchUsers(
     @Query('query') query: string,
@@ -133,14 +138,17 @@ export class UsersController {
   @Put(':id')
   @UpdateUserDocs()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(GlobalRole.PLATFORM_ADMIN) // e.g. only platform admins can fully update
+  @Roles(
+    GlobalRole.PLATFORM_ADMIN,
+    GlobalRole.PLATFORM_SUPER_ADMIN,
+    GlobalRole.END_USER,
+  )
   @ApiBearerAuth()
   async updateUser(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
     @CurrentUser() currentUser: User,
   ) {
-    // Optionally ensure currentUser is not undefined or only updating themselves
     return this.usersService.updateUser(id, updateUserDto, currentUser);
   }
 
@@ -150,12 +158,19 @@ export class UsersController {
    */
   @Delete(':id')
   @DeleteUserDocs()
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(GlobalRole.PLATFORM_ADMIN)
+  @Roles(
+    GlobalRole.PLATFORM_ADMIN,
+    GlobalRole.PLATFORM_SUPER_ADMIN,
+    GlobalRole.END_USER,
+  )
   @ApiBearerAuth()
-  async deleteUser(@Param('id', ParseUUIDPipe) id: string) {
-    await this.usersService.deleteUser(id);
+  async deleteUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() currentUser: User,
+  ) {
+    return await this.usersService.deleteUser(id, currentUser);
   }
 
   /**

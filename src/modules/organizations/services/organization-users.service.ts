@@ -4,6 +4,7 @@ import {
   ConflictException,
   InternalServerErrorException,
   ForbiddenException,
+  HttpStatus,
 } from '@nestjs/common';
 import { CreateOrganizationUserDto } from '../dtos/create-organization-user.dto';
 import { UpdateOrganizationUserDto } from '../dtos/update-organization-user.dto';
@@ -91,7 +92,7 @@ export class OrganizationUserService {
   async activateOrganizationUser(
     userId: string,
     activatedById: string,
-  ): Promise<void> {
+  ): Promise<{ message: string }> {
     try {
       await this.organizationUsersRepository.activateOrganizationUser(
         userId,
@@ -100,18 +101,14 @@ export class OrganizationUserService {
       this.logger.info(
         'Organization user activated successfully',
         'OrganizationUserService',
-        {
-          userId,
-        },
+        { userId },
       );
+      return { message: `User with id ${userId} activated successfully.` };
     } catch (error) {
       this.logger.error(
         'Failed to activate organization user',
         'OrganizationUserService',
-        {
-          error,
-          userId,
-        },
+        { error, userId },
       );
       throw error;
     }
@@ -121,7 +118,7 @@ export class OrganizationUserService {
     userId: string,
     deactivatedById: string,
     reason: string,
-  ): Promise<void> {
+  ): Promise<{ message: string }> {
     try {
       await this.organizationUsersRepository.deactivateOrganizationUser(
         userId,
@@ -131,18 +128,14 @@ export class OrganizationUserService {
       this.logger.info(
         'Organization user deactivated successfully',
         'OrganizationUserService',
-        {
-          userId,
-        },
+        { userId },
       );
+      return { message: `User with id ${userId} deactivated successfully.` };
     } catch (error) {
       this.logger.error(
         'Failed to deactivate organization user',
         'OrganizationUserService',
-        {
-          error,
-          userId,
-        },
+        { error, userId },
       );
       throw error;
     }
@@ -152,7 +145,7 @@ export class OrganizationUserService {
     userId: string,
     roles: GlobalRole[],
     updatedById: string,
-  ): Promise<void> {
+  ): Promise<{ message: string }> {
     try {
       await this.organizationUsersRepository.updateOrganizationUserRoles(
         userId,
@@ -162,25 +155,25 @@ export class OrganizationUserService {
       this.logger.info(
         'Organization user role updated successfully',
         'OrganizationUserService',
-        {
-          userId,
-          roles,
-        },
+        { userId, roles },
       );
+      return { message: `User with id ${userId} roles updated successfully.` };
     } catch (error) {
       this.logger.error(
         'Failed to update organization user role',
         'OrganizationUserService',
-        {
-          error,
-          userId,
-        },
+        { error, userId },
       );
       throw error;
     }
   }
 
-  async lockOrganizationUserAccount(userId: string): Promise<void> {
+  async lockOrganizationUserAccount(userId: string): Promise<{
+    statusCode: number;
+    message: string;
+    data: any;
+    timestamp: string;
+  }> {
     try {
       await this.organizationUsersRepository.lockOrganizationUserAccount(
         userId,
@@ -188,27 +181,35 @@ export class OrganizationUserService {
       this.logger.info(
         'Organization user account locked successfully',
         'OrganizationUserService',
-        {
-          userId,
-        },
+        { userId },
       );
+      return {
+        statusCode: HttpStatus.OK,
+        message: `Organization user account with id ${userId} locked successfully.`,
+        data: null,
+        timestamp: new Date().toISOString(),
+      };
     } catch (error) {
       this.logger.error(
         'Failed to lock organization user account',
         'OrganizationUserService',
-        {
-          error,
-          userId,
-        },
+        { error, userId },
       );
-      throw error;
+      throw new InternalServerErrorException(
+        'Failed to lock organization user account',
+      );
     }
   }
 
   async unlockOrganizationUserAccount(
     userId: string,
     unlockedById: string,
-  ): Promise<void> {
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: any;
+    timestamp: string;
+  }> {
     try {
       await this.organizationUsersRepository.unlockOrganizationUserAccount(
         userId,
@@ -217,20 +218,23 @@ export class OrganizationUserService {
       this.logger.info(
         'Organization user account unlocked successfully',
         'OrganizationUserService',
-        {
-          userId,
-        },
+        { userId },
       );
+      return {
+        statusCode: HttpStatus.OK,
+        message: `Organization user account with id ${userId} unlocked successfully.`,
+        data: null,
+        timestamp: new Date().toISOString(),
+      };
     } catch (error) {
       this.logger.error(
         'Failed to unlock organization user account',
         'OrganizationUserService',
-        {
-          error,
-          userId,
-        },
+        { error, userId },
       );
-      throw error;
+      throw new InternalServerErrorException(
+        'Failed to unlock organization user account',
+      );
     }
   }
 

@@ -9,13 +9,15 @@ import {
   Query,
   HttpStatus,
   HttpCode,
-  UseGuards,
   UseFilters,
   UseInterceptors,
   ParseUUIDPipe,
   ParseIntPipe,
   BadRequestException,
   InternalServerErrorException,
+  ForbiddenException,
+  DefaultValuePipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -74,11 +76,20 @@ import {
 import { ArrayContains, FindOptionsOrder, FindOptionsWhere } from 'typeorm';
 import { LoggerService } from '@common/services/logger.service';
 import { UpdateUserRolesDto } from '../dtos/update-user-roles.dto';
+import { Public } from '@common/decorators/public.decorator';
+import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@modules/auth/guards/roles.guard';
 
 @ApiTags('Organizations')
 @Controller({ path: 'organizations', version: '1' })
 @UseFilters(GlobalExceptionFilter)
 @UseInterceptors(TransformInterceptor)
+@Roles(
+  GlobalRole.ORG_ADMIN,
+  GlobalRole.ORG_SUPER_ADMIN,
+  GlobalRole.PLATFORM_ADMIN,
+  GlobalRole.PLATFORM_SUPER_ADMIN,
+)
 export class OrganizationController {
   constructor(
     private readonly organizationService: OrganizationService,
@@ -92,7 +103,7 @@ export class OrganizationController {
    */
   @Post('with-admin')
   @HttpCode(HttpStatus.CREATED)
-  @Roles(GlobalRole.ORG_ADMIN) // or whichever GlobalRole(s) you want for creation
+  @Public()
   async createOrganizationWithAdmin(
     @Body() createOrganizationWithAdminDto: CreateOrganizationWithAdminDto,
     @CurrentUser() currentUser: User | null,
@@ -157,13 +168,19 @@ export class OrganizationController {
    */
   @Patch(':id/activate')
   @ActivateOrganizationDocs()
-  @Roles(GlobalRole.ORG_ADMIN)
+  @Roles(GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async activateOrganization(
     @Param('id', ParseUUIDPipe) organizationId: string,
     @Body() reasonDto: ReasonDto,
     @CurrentUser() currentUser: User,
-  ): Promise<void> {
-    await this.organizationService.activateOrganization(
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: any;
+    timestamp: string;
+  }> {
+    return this.organizationService.activateOrganization(
       organizationId,
       currentUser.id,
       reasonDto.reason,
@@ -176,13 +193,19 @@ export class OrganizationController {
    */
   @Patch(':id/suspend')
   @SuspendOrganizationDocs()
-  @Roles(GlobalRole.ORG_ADMIN)
+  @Roles(GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async suspendOrganization(
     @Param('id', ParseUUIDPipe) organizationId: string,
     @Body() suspendDto: SuspendOrganizationDto,
     @CurrentUser() currentUser: User,
-  ): Promise<void> {
-    await this.organizationService.suspendOrganization(
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: any;
+    timestamp: string;
+  }> {
+    return this.organizationService.suspendOrganization(
       organizationId,
       currentUser.id,
       suspendDto.reason,
@@ -195,13 +218,19 @@ export class OrganizationController {
    */
   @Patch(':id/archive')
   @ArchiveOrganizationDocs()
-  @Roles(GlobalRole.ORG_ADMIN)
+  @Roles(GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async archiveOrganization(
     @Param('id', ParseUUIDPipe) organizationId: string,
     @Body() archiveDto: ArchiveOrganizationDto,
     @CurrentUser() currentUser: User,
-  ): Promise<void> {
-    await this.organizationService.archiveOrganization(
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: any;
+    timestamp: string;
+  }> {
+    return this.organizationService.archiveOrganization(
       organizationId,
       currentUser.id,
       archiveDto.reason,
@@ -214,6 +243,8 @@ export class OrganizationController {
    */
   @Put(':id')
   @UpdateOrganizationDocs()
+  @Roles(GlobalRole.ORG_ADMIN, GlobalRole.ORG_SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async updateOrganization(
     @Param('id', ParseUUIDPipe) organizationId: string,
     @Body() updateOrganizationDto: UpdateOrganizationDto,
@@ -245,8 +276,8 @@ export class OrganizationController {
   @Get()
   @ListOrganizationsDocs()
   async listOrganizations(
-    @Query('page', ParseIntPipe) page = 1,
-    @Query('limit', ParseIntPipe) limit = 10,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     @Query('status') status?: OrganizationStatus,
     @Query('industry') industry?: string,
     @Query('search') search?: string,
@@ -302,6 +333,7 @@ export class OrganizationController {
   @HttpCode(HttpStatus.CREATED)
   @CreateOrganizationUserDocs()
   @Roles(GlobalRole.ORG_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async createOrganizationUser(
     @Param('organizationId', ParseUUIDPipe) organizationId: string,
     @Body() createOrganizationUserDto: CreateOrganizationUserDto,
@@ -320,12 +352,20 @@ export class OrganizationController {
    */
   @Put(':organizationId/users/:userId')
   @UpdateOrganizationUserDocs()
+  @Roles(GlobalRole.ORG_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async updateOrganizationUser(
     @Param('organizationId', ParseUUIDPipe) organizationId: string,
     @Param('userId', ParseUUIDPipe) userId: string,
     @Body() updateDto: UpdateOrganizationUserDto,
     @CurrentUser() currentUser: User,
   ): Promise<OrganizationUser> {
+    if (
+      currentUser.id !== userId &&
+      !currentUser.roles.includes(GlobalRole.ORG_ADMIN)
+    ) {
+      throw new ForbiddenException('You are not allowed to update this user.');
+    }
     return this.organizationUserService.updateOrganizationUser(
       userId,
       updateDto,
@@ -339,17 +379,18 @@ export class OrganizationController {
    */
   @Get(':organizationId/users')
   @ListOrganizationUsersDocs()
+  @Roles(GlobalRole.ORG_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async listOrganizationUsers(
     @Param('organizationId', ParseUUIDPipe) organizationId: string,
-    @Query('page', ParseIntPipe) page = 1,
-    @Query('limit', ParseIntPipe) limit = 10,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     @Query('role') role?: GlobalRole,
     @Query('isActive') isActive?: boolean,
     @Query('department') department?: string,
   ): Promise<PaginationResult<OrganizationUser>> {
     const whereOptions: FindOptionsWhere<OrganizationUser> = { organizationId };
 
-    // Use ArrayContains to filter by role within roles array
     if (role) whereOptions.roles = ArrayContains([role]);
     if (isActive !== undefined) whereOptions.isActive = isActive;
     if (department) whereOptions.department = department;
@@ -371,12 +412,13 @@ export class OrganizationController {
    * Access: Organization Admin
    */
   @Get(':organizationId/users/search')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @SearchOrganizationUsersDocs()
   async searchOrganizationUsers(
     @Param('organizationId', ParseUUIDPipe) organizationId: string,
     @Query('search') search: string,
-    @Query('page', ParseIntPipe) page = 1,
-    @Query('limit', ParseIntPipe) limit = 10,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ): Promise<PaginationResult<OrganizationUser>> {
     const paginationOptions: PaginationOptions<OrganizationUser> = {
       page,
@@ -393,13 +435,14 @@ export class OrganizationController {
 
   @Patch(':organizationId/users/:userId/activate')
   @Roles(GlobalRole.ORG_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ActivateOrganizationUserDocs()
   async activateOrganizationUser(
     @Param('organizationId', ParseUUIDPipe) orgId: string,
     @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() currentUser: User,
-  ): Promise<void> {
-    await this.organizationUserService.activateOrganizationUser(
+  ): Promise<{ message: string }> {
+    return this.organizationUserService.activateOrganizationUser(
       userId,
       currentUser.id,
     );
@@ -407,14 +450,15 @@ export class OrganizationController {
 
   @Patch(':organizationId/users/:userId/deactivate')
   @Roles(GlobalRole.ORG_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @DeactivateOrganizationUserDocs()
   async deactivateOrganizationUser(
     @Param('organizationId', ParseUUIDPipe) orgId: string,
     @Param('userId', ParseUUIDPipe) userId: string,
     @Body() reasonDto: ReasonDto,
     @CurrentUser() currentUser: User,
-  ): Promise<void> {
-    await this.organizationUserService.deactivateOrganizationUser(
+  ): Promise<{ message: string }> {
+    return this.organizationUserService.deactivateOrganizationUser(
       userId,
       currentUser.id,
       reasonDto.reason,
@@ -423,14 +467,15 @@ export class OrganizationController {
 
   @Patch(':organizationId/users/:userId/roles')
   @Roles(GlobalRole.ORG_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @UpdateOrganizationUserRolesDocs()
   async updateOrganizationUserRoles(
     @Param('organizationId', ParseUUIDPipe) orgId: string,
     @Param('userId', ParseUUIDPipe) userId: string,
     @Body() updateUserRolesDto: UpdateUserRolesDto,
     @CurrentUser() currentUser: User,
-  ): Promise<void> {
-    await this.organizationUserService.updateOrganizationUserRoles(
+  ): Promise<{ message: string }> {
+    return this.organizationUserService.updateOrganizationUserRoles(
       userId,
       updateUserRolesDto.roles,
       currentUser.id,
@@ -439,29 +484,42 @@ export class OrganizationController {
 
   @Patch(':organizationId/users/:userId/lock')
   @Roles(GlobalRole.ORG_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @LockOrganizationUserAccountDocs()
   async lockOrganizationUserAccount(
     @Param('organizationId', ParseUUIDPipe) orgId: string,
     @Param('userId', ParseUUIDPipe) userId: string,
-  ): Promise<void> {
-    await this.organizationUserService.lockOrganizationUserAccount(userId);
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: any;
+    timestamp: string;
+  }> {
+    return this.organizationUserService.lockOrganizationUserAccount(userId);
   }
 
   @Patch(':organizationId/users/:userId/unlock')
   @Roles(GlobalRole.ORG_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @UnlockOrganizationUserAccountDocs()
   async unlockOrganizationUserAccount(
     @Param('organizationId', ParseUUIDPipe) orgId: string,
     @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() currentUser: User,
-  ): Promise<void> {
-    await this.organizationUserService.unlockOrganizationUserAccount(
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: any;
+    timestamp: string;
+  }> {
+    return this.organizationUserService.unlockOrganizationUserAccount(
       userId,
       currentUser.id,
     );
   }
 
   @Get(':organizationId/users/:userId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @FindOrganizationUserByIdDocs()
   async findOrganizationUserById(
     @Param('organizationId', ParseUUIDPipe) orgId: string,
@@ -471,6 +529,7 @@ export class OrganizationController {
   }
 
   @Get(':organizationId/users/email/:email')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @FindOrganizationUserByEmailDocs()
   async findOrganizationUserByEmail(
     @Param('organizationId', ParseUUIDPipe) orgId: string,
