@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 
 import { ROLES_KEY } from '@common/decorators/roles.decorator';
+import { IS_PUBLIC_KEY } from '@common/decorators/public.decorator';
 import {
   GlobalRole,
   GLOBAL_ROLE_HIERARCHY,
@@ -17,6 +18,16 @@ export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
+    // Check if the endpoint is marked as public
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      return true;
+    }
+
+    // Proceed with normal role checks if not public
     const requiredRoles = this.reflector.getAllAndMerge<GlobalRole[]>(
       ROLES_KEY,
       [context.getHandler(), context.getClass()],
@@ -32,7 +43,6 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('No user or user.roles found in request');
     }
 
-    // Ensure we have an array of roles
     const userRoles: GlobalRole[] = user.roles ?? [user.role];
 
     for (const requiredRole of requiredRoles) {
