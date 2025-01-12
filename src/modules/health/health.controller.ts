@@ -11,6 +11,7 @@ import { ApiOperation, ApiTags, ApiResponse } from '@nestjs/swagger';
 import { CustomHealthIndicator } from './indicators/custom.health';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from 'src/common/services/logger.service';
+import { S3Service } from '@modules/documents/services/s3.service';
 
 @ApiTags('Health')
 @Controller({ path: 'health', version: '1' })
@@ -28,6 +29,7 @@ export class HealthController {
     private readonly customHealth: CustomHealthIndicator,
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
+    private readonly s3Service: S3Service,
   ) {
     this.initializeConfig();
   }
@@ -72,6 +74,7 @@ export class HealthController {
       const result = await this.health.check([
         () => this.checkDatabase(),
         () => this.checkExternalService(),
+        () => this.checkS3Bucket(),
         () => this.memory.checkHeap('memory_heap', this.memoryHeapThreshold),
         () => this.memory.checkRSS('memory_rss', this.memoryRSSThreshold),
         () => this.customHealth.isHealthy('systemHealth'),
@@ -107,6 +110,20 @@ export class HealthController {
           dbResult.database.status === 'up' ? 'connected' : 'disconnected',
       },
     };
+  }
+
+  private async checkS3Bucket(): Promise<HealthIndicatorResult> {
+    this.logger.debug('Checking S3 connectivity', 'HealthController');
+    const isConnected = await this.s3Service.checkConnection();
+    if (!isConnected) {
+      throw new Error('S3 connection failed');
+    }
+    return {
+      s3: {
+        status: 'up',
+        message: 'S3 connection is healthy',
+      },
+    } as HealthIndicatorResult;
   }
 
   private checkExternalService() {
