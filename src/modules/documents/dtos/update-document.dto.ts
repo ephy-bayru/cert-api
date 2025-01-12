@@ -13,7 +13,7 @@ export class UpdateDocumentDto {
 
   @IsOptional()
   @IsEnum(DocumentType)
-  documentType: DocumentType;
+  documentType?: DocumentType;
 
   @IsOptional()
   @IsDate()

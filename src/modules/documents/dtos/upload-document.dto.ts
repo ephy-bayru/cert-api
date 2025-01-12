@@ -6,10 +6,11 @@ import {
   IsDate,
   IsUUID,
   MaxLength,
-  ValidateIf,
+  Validate,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { DocumentStatus } from '../entities/document-status.enum';
+import { AtLeastOneOwnershipValidator } from '../validations/at-least-one-ownership.validator';
 
 export class UploadDocumentDto {
   @IsString()
@@ -38,14 +39,17 @@ export class UploadDocumentDto {
   @IsEnum(DocumentStatus)
   status?: DocumentStatus = DocumentStatus.DRAFT;
 
+  // The user physically uploading the doc
   @IsUUID()
   uploaderId: string;
 
+  // Organization ownership
   @IsOptional()
   @IsUUID()
   uploadingOrganizationId?: string;
 
-  @ValidateIf((o) => o.uploadingOrganizationId)
+  // If we are providing an owner user
+  @IsOptional()
   @IsUUID()
   ownerId?: string;
 
@@ -61,7 +65,9 @@ export class UploadDocumentDto {
 
   @IsOptional()
   @IsString()
-  metadata?: string; // JSON string to be parsed
+  metadata?: string;
 
-  // The actual file will be handled separately in the controller
+  // Use the custom class validator to ensure at least one ownership field
+  @Validate(AtLeastOneOwnershipValidator)
+  dummyFieldForValidation?: boolean;
 }
