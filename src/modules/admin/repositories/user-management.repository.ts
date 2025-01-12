@@ -181,4 +181,22 @@ export class UserManagementRepository extends BaseRepository<User> {
       });
     }
   }
+
+  /**
+ * Checks if an email already exists in the database (ignoring soft-deleted users).
+ * @param email Email to check.
+ * @returns Boolean indicating whether the email exists.
+ */
+async checkEmailExists(email: string): Promise<boolean> {
+  try {
+    const count = await this.repository.count({
+      where: { email, deletedAt: IsNull() },
+    });
+    return count > 0;
+  } catch (error) {
+    this.handleError('Error checking email uniqueness', error, { email });
+    throw error;
+  }
+}
+
 }

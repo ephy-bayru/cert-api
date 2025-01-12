@@ -36,11 +36,11 @@ export class UserManagementService {
       createUserDto.email = createUserDto.email.trim().toLowerCase();
 
       // Check if email already exists
-      const existingUser = await this.userRepository.findOne({
-        where: { email: createUserDto.email, deletedAt: IsNull() },
-      });
+      const emailExists = await this.userRepository.checkEmailExists(
+        createUserDto.email,
+      );
 
-      if (existingUser) {
+      if (emailExists) {
         throw new ConflictException('Email is already in use.');
       }
 
