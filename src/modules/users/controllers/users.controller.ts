@@ -13,8 +13,8 @@ import {
   UseFilters,
   UseInterceptors,
   ParseUUIDPipe,
-  BadRequestException,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -69,14 +69,12 @@ export class UsersController {
   async createUser(
     @Body(UniqueUserValidationPipe) createUserDto: CreateUserDto,
   ) {
-    // End-users can sign up without guards:
     return this.usersService.createUser(createUserDto);
   }
 
   /**
    * 2) Searching users:
-   *    Typical usage for admins or logged-in users
-   *    If you want it fully open or restricted, adjust Guards accordingly.
+   *    Only platform admins, super admins, and end-users can search users.
    */
   @Get('search')
   @SearchUsersDocs()
@@ -97,8 +95,8 @@ export class UsersController {
   }
 
   /**
-   * 3) Get paginated users
-   *    Typically an admin or privileged user might see all users.
+   * 3) Get paginated users:
+   *    Only platform admins and super admins can list all users.
    */
   @Get()
   @FindAllPaginatedDocs()
@@ -118,22 +116,34 @@ export class UsersController {
   }
 
   /**
-   * 4) Get user by ID
-   *    Admin-only or you might allow a user to fetch their own record.
+   * 4) Get user by ID:
+   *    Only platform admins, super admins, and the user themselves can fetch their own record.
    */
   @Get(':id')
   @FindOneByIdDocs()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN)
+  @Roles(
+    GlobalRole.PLATFORM_ADMIN,
+    GlobalRole.PLATFORM_SUPER_ADMIN,
+    GlobalRole.END_USER,
+  )
   @ApiBearerAuth()
-  async findOneById(@Param('id', ParseUUIDPipe) id: string) {
+  async findOneById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() currentUser: User,
+  ) {
+    if (
+      currentUser.roles.includes(GlobalRole.END_USER) &&
+      currentUser.id !== id
+    ) {
+      throw new ForbiddenException('You can only access your own user record.');
+    }
     return this.usersService.findOneById(id);
   }
 
   /**
-   * 5) Update user
-   *    Typically an admin changes user details, or a user can update their own profile
-   *    if you do an additional check inside the service or with more complex guards.
+   * 5) Update user:
+   *    Platform admins, super admins, and the user themselves can update their own profile.
    */
   @Put(':id')
   @UpdateUserDocs()
@@ -149,12 +159,19 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
     @CurrentUser() currentUser: User,
   ) {
+    if (
+      currentUser.roles.includes(GlobalRole.END_USER) &&
+      currentUser.id !== id
+    ) {
+      throw new ForbiddenException('You can only update your own profile.');
+    }
     return this.usersService.updateUser(id, updateUserDto, currentUser);
   }
 
   /**
-   * 6) Delete user
-   *    Hard or soft delete. Admin only in this example.
+   * 6) Delete user:
+   *    Platform admins and super admins can delete any user.
+   *    End-users can only delete their own account (soft delete).
    */
   @Delete(':id')
   @DeleteUserDocs()
@@ -170,13 +187,20 @@ export class UsersController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: User,
   ) {
+    // If the current user is an END_USER, they can only delete their own account
+    if (
+      currentUser.roles.includes(GlobalRole.END_USER) &&
+      currentUser.id !== id
+    ) {
+      throw new ForbiddenException('You can only delete your own account.');
+    }
+
     return await this.usersService.deleteUser(id, currentUser);
   }
 
   /**
-   * 7) Update user status
-   *    E.g. to set from PENDING_ACTIVATION -> ACTIVE, or ACTIVE -> INACTIVE
-   *    Admin only in this example.
+   * 7) Update user status:
+   *    Only platform admins and super admins can update user status.
    */
   @Patch(':id/status')
   @UpdateUserStatusDocs()
@@ -186,41 +210,30 @@ export class UsersController {
   async updateUserStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('status') status: UserStatus,
-    @CurrentUser() currentUser?: User,
+    @CurrentUser() currentUser: User,
   ) {
-    if (!currentUser) {
-      throw new BadRequestException(
-        'No current user found in request context.',
-      );
-    }
     return this.usersService.updateUserStatus(id, status, currentUser);
   }
 
   /**
-   * 8) Deactivate user
-   *    A specialized route for quick "deactivation". Admin only.
+   * 8) Deactivate user:
+   *    Only platform admins and super admins can deactivate users.
    */
   @Patch(':id/deactivate')
   @DeactivateUserDocs()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN)
+  @Roles(GlobalRole.PLATFORM_ADMIN, GlobalRole.PLATFORM_SUPER_ADMIN, GlobalRole.END_USER)
   @ApiBearerAuth()
   async deactivateUser(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() currentUser?: User,
+    @CurrentUser() currentUser: User,
   ) {
-    if (!currentUser) {
-      throw new BadRequestException(
-        'No current user found in request context.',
-      );
-    }
     return this.usersService.deactivateUser(id, currentUser);
   }
 
   /**
-   * 9) Activate user
-   *    For approving end users from PENDING_ACTIVATION -> ACTIVE
-   *    Admin only.
+   * 9) Activate user:
+   *    Only platform admins and super admins can activate users.
    */
   @Patch(':id/activate')
   @ActivateUserDocs()
@@ -229,13 +242,8 @@ export class UsersController {
   @ApiBearerAuth()
   async activateUser(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() currentUser?: User,
+    @CurrentUser() currentUser: User,
   ) {
-    if (!currentUser) {
-      throw new BadRequestException(
-        'No current user found in request context.',
-      );
-    }
     return this.usersService.activateUser(id, currentUser);
   }
 }
