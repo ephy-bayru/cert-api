@@ -12,6 +12,9 @@ import {
   ParseUUIDPipe,
   UploadedFile,
   UseInterceptors,
+  BadRequestException,
+  UseGuards,
+  UseFilters,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { DocumentsService } from '../services/documents.service';
@@ -43,10 +46,14 @@ import {
 } from '../documentation/documents.controller.documentation';
 import { UploadDocumentDto } from '../dtos/upload-document.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@modules/auth/guards/roles.guard';
+import { GlobalExceptionFilter } from '@common/filters/global-exception.filter';
+import { TransformInterceptor } from '@common/interceptors/transform.interceptor';
 
 @ApiTags('Documents')
-// @ApiBearerAuth()
-// @UseGuards(JwtAuthGuard)
+@UseFilters(GlobalExceptionFilter)
+@UseInterceptors(TransformInterceptor)
 @Controller({
   path: 'documents',
   version: '1',
@@ -56,13 +63,15 @@ export class DocumentsController {
 
   @Post()
   @UploadDocumentDocs()
-  // Example if you want file upload via multipart/form-data:
   @UseInterceptors(FileInterceptor('file'))
   async uploadDocument(
     @Body() uploadDocumentDto: UploadDocumentDto,
     @User('id') userId: string,
     @UploadedFile() file?: Express.Multer.File,
   ): Promise<Document> {
+    if (!file || file.size === 0) {
+      throw new BadRequestException('File is required and cannot be empty');
+    }
     return this.documentsService.createDocument(
       uploadDocumentDto,
       userId,
@@ -129,6 +138,7 @@ export class DocumentsController {
 
   @Get('user')
   @GetDocumentsByUserDocs()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async getDocumentsByUser(
     @User('id') userId: string,
     @Query() filters: DocumentFilters,
