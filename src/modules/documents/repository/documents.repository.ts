@@ -19,7 +19,7 @@ export class DocumentsRepository extends BaseRepository<Document> {
   }
 
   // ---- Create Document ----
-  async createDocument(
+  async buildDocumentEntity(
     createDocumentDto: UploadDocumentDto,
     userId: string,
   ): Promise<Document> {
@@ -28,15 +28,13 @@ export class DocumentsRepository extends BaseRepository<Document> {
       try {
         parsedMetadata = JSON.parse(createDocumentDto.metadata);
       } catch (err) {
-        this.logger.error(
-          'Invalid JSON in metadata',
-          'DocumentsRepository.createDocument',
-          { error: err },
-        );
+        this.logger.error('Invalid JSON in metadata', 'DocumentsRepository.buildDocumentEntity', {
+          error: err,
+        });
       }
     }
 
-    // Create the Document entity:
+    // Create the Document entity without saving
     const docEntity = this.repository.create({
       title: createDocumentDto.title,
       description: createDocumentDto.description,
@@ -44,20 +42,23 @@ export class DocumentsRepository extends BaseRepository<Document> {
       expiryDate: createDocumentDto.expiryDate,
       tags: createDocumentDto.tags,
       status: createDocumentDto.status || DocumentStatus.DRAFT,
-      // fileUrl, fileSize, fileType can be set after S3 upload in the service
-      fileUrl: '',
-      fileHash: '',
-      fileSize: 0,
+
+      fileUrl: '',      // Will be set later
+      fileHash: '',     // If you compute a hash, do it later
+      fileSize: 0,      // Initially zero, but won't be saved yet
       fileType: '',
+
       uploader: { id: createDocumentDto.uploaderId } as any,
-      // If you want the user performing creation to be the owner by default:
+
+      // If you want the user performing creation to be the owner by default
       owner: { id: userId } as any,
       ownerId: userId,
 
       metadata: parsedMetadata,
     });
 
-    return this.repository.save(docEntity);
+    // Return the unsaved doc entity
+    return docEntity;
   }
 
   // ---- Get a single Document ----
