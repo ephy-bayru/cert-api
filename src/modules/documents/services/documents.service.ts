@@ -39,8 +39,13 @@ export class DocumentsService {
     userId: string,
     file?: Express.Multer.File,
   ): Promise<Document> {
+    this.logger.info('Uploading document', 'DocumentsService', {
+      userId,
+      createDocumentDto,
+    });
+
     try {
-      // 1. S3 upload if file is provided
+      // 1) Upload to S3 if file is provided
       let s3Key: string | undefined;
       if (file) {
         s3Key = await this.s3Service.uploadFile(
@@ -51,43 +56,46 @@ export class DocumentsService {
         );
       }
 
-      // 2. Create DB record
-      const document = await this.documentsRepository.createDocument(
+      // 2) Build an unsaved Document entity
+      let document = await this.documentsRepository.buildDocumentEntity(
         createDocumentDto,
         userId,
       );
 
-      // 3. If S3 upload happened, update file info
+      // 3) If S3 upload succeeded, fill file fields before saving
       if (s3Key && file) {
         document.fileUrl = s3Key;
         document.fileSize = file.size;
         document.fileType = file.mimetype;
-        // If you have a hash, set it here
-        // document.fileHash = someComputedHash(file)
-        await this.documentsRepository.save(document);
+        // If you compute a file hash, do it here
+        // document.fileHash = someHashFunction(file.buffer);
       }
 
-      // 4. Create Audit Log
-      await this.auditLogService.uploadDocumentLog(
-        document.id,
-        AuditAction.UPLOAD_DOCUMENT,
-        userId,
-        { documentId: document.id },
-      );
+      // 4) Now save the doc (this is the first actual DB insert)
+      document = await this.documentsRepository.save(document);
 
-      // 5. Notifications
-      await this.notificationService.createNotification({
-        type: NotificationType.IN_APP,
-        contentType: NotificationContentType.DOCUMENT_UPLOADED,
-        message: `New document "${document.title}" created`,
-        priority: NotificationPriority.NORMAL,
-        userId: userId,
-      });
+      // 5) Create Audit Log
+      // await this.auditLogService.uploadDocumentLog(
+      //   document.id,
+      //   AuditAction.UPLOAD_DOCUMENT,
+      //   userId,
+      //   { documentId: document.id },
+      // );
+
+      // 6) Notifications
+      // await this.notificationService.createNotification({
+      //   type: NotificationType.IN_APP,
+      //   contentType: NotificationContentType.DOCUMENT_UPLOADED,
+      //   message: `New document "${document.title}" created`,
+      //   priority: NotificationPriority.NORMAL,
+      //   userId: userId,
+      // });
 
       return document;
     } catch (error) {
       this.logger.error('Error uploading document', 'DocumentsService', {
-        error,
+        error: error.message,
+        stack: error.stack,
         userId,
       });
       throw new BadRequestException('Error uploading document');
