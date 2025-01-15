@@ -24,6 +24,7 @@ import {
 import { UploadDocumentDto } from '../dtos/upload-document.dto';
 import { S3Service } from './s3.service';
 import { EncryptionType } from '../entities/encryption-type';
+import { HashingService } from './hashing.service';
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -32,6 +33,7 @@ export class DocumentsService {
     private readonly notificationService: NotificationService,
     private readonly logger: LoggerService,
     private readonly s3Service: S3Service,
+    private readonly hashingService: HashingService,
   ) {}
 
   async createDocument(
@@ -48,11 +50,12 @@ export class DocumentsService {
       // 1) Upload to S3 if file is provided
       let s3Key: string | undefined;
       if (file) {
+        // Use SSE_S3 (or SSE_KMS) for server-side encryption in S3
         s3Key = await this.s3Service.uploadFile(
           file.buffer,
           file.originalname,
           'documents',
-          EncryptionType.NONE,
+          EncryptionType.SSE_S3,
         );
       }
 
@@ -62,19 +65,22 @@ export class DocumentsService {
         userId,
       );
 
-      // 3) If S3 upload succeeded, fill file fields before saving
+      // 3) If file was uploaded, fill file fields before saving
       if (s3Key && file) {
         document.fileUrl = s3Key;
         document.fileSize = file.size;
         document.fileType = file.mimetype;
-        // If you compute a file hash, do it here
-        // document.fileHash = someHashFunction(file.buffer);
+
+        // Compute a cryptographic hash (e.g. SHA-256) for the file
+        // Store that hash in the DB so we can verify file integrity later
+        const fileHash = this.hashingService.computeSha256(file.buffer);
+        document.fileHash = fileHash;
       }
 
-      // 4) Now save the doc (this is the first actual DB insert)
+      // 4) Save the doc (this is the first DB insert)
       document = await this.documentsRepository.save(document);
 
-      // 5) Create Audit Log
+      // 5) (Optional) create audit log
       // await this.auditLogService.uploadDocumentLog(
       //   document.id,
       //   AuditAction.UPLOAD_DOCUMENT,
@@ -82,13 +88,13 @@ export class DocumentsService {
       //   { documentId: document.id },
       // );
 
-      // 6) Notifications
+      // 6) (Optional) send notifications
       // await this.notificationService.createNotification({
       //   type: NotificationType.IN_APP,
       //   contentType: NotificationContentType.DOCUMENT_UPLOADED,
       //   message: `New document "${document.title}" created`,
       //   priority: NotificationPriority.NORMAL,
-      //   userId: userId,
+      //   userId,
       // });
 
       return document;
