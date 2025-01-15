@@ -33,8 +33,7 @@
   },
   "include": [
     "src/**/*",
-    "test/**/*",
-    "hardhat.config.ts"
+    "test/**/*"
   ],
   "exclude": [
     "node_modules",
